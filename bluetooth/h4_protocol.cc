@@ -37,11 +37,13 @@ typedef uint16_t UINT16;
 #define T2_MAXIMUM_LATENCY                        0x000D
 #define HCIC_PARAM_SIZE_ENH_ACC_ESCO_CONN         63
 
+#ifdef  BOARD_HAVE_INTEL_CNV
 #define INTEL_VID 0x8087
 #define INTEL_PID_8265 0x0a2b // Windstorm peak
 #define INTEL_PID_3168 0x0aa7 //SandyPeak (SdP)
 #define INTEL_PID_9260 0x0025 // 9160/9260 (also known as ThunderPeak)
 #define INTEL_PID_9560 0x0aaa // 9460/9560 also know as Jefferson Peak (JfP)
+#endif
 
 #include <errno.h>
 #include <fcntl.h>
@@ -144,6 +146,7 @@ size_t H4Protocol::Send(uint8_t type, const uint8_t* data, size_t length){
     return ret;
 }
 
+#ifdef BOARD_HAVE_INTEL_CNV
 bool H4Protocol::IsIntelController(uint16_t vid, uint16_t pid) {
     if ((vid == INTEL_VID) && ((pid == INTEL_PID_8265) ||
                                 (pid == INTEL_PID_3168)||
@@ -211,10 +214,12 @@ void H4Protocol::SendHandle(void) {
         close(fd);
     }
 }
+#endif
 
 void H4Protocol::OnPacketReady() {
   switch (hci_packet_type_) {
     case HCI_PACKET_TYPE_EVENT:
+#ifdef BOARD_HAVE_INTEL_CNV
         if ((hci_packetizer_.GetPacket())[0] == HCI_COMMAND_COMPLETE_EVT) {
                 unsigned int cmd, lsb, msb;
                 msb = hci_packetizer_.GetPacket()[4] ;
@@ -233,7 +238,7 @@ void H4Protocol::OnPacketReady() {
              ALOGI("Value of SCO handle = %x, %x", handle[0], handle[1]);
              H4Protocol::SendHandle();
         }
-
+#endif
       event_cb_(hci_packetizer_.GetPacket());
       break;
     case HCI_PACKET_TYPE_ACL_DATA:
@@ -250,7 +255,7 @@ void H4Protocol::OnPacketReady() {
   hci_packet_type_ = HCI_PACKET_TYPE_UNKNOWN;
 }
 
-
+#ifdef BOARD_HAVE_INTEL_CNV
 typedef struct
 {
     uint8_t         type;
@@ -259,6 +264,7 @@ typedef struct
     uint8_t         offset;
     uint16_t        layer_specific;
 } BT_EVENT_HDR;
+#endif
 
 void H4Protocol::OnDataReady(int fd) {
     if (hci_packet_type_ == HCI_PACKET_TYPE_UNKNOWN) {
@@ -295,6 +301,7 @@ void H4Protocol::OnDataReady(int fd) {
           LOG_ALWAYS_FATAL("%s: Unimplemented packet type %d", __func__,
                            static_cast<int>(hci_packet_type_));
         } else {
+#ifdef BOARD_HAVE_INTEL_CNV
             if(tpkt.data()[1] == HCI_COMMAND_COMPLETE_EVT) {
                 ALOGD("%s Command complete event ncmds = %d",
                                                      __func__, tpkt.data()[3]);
@@ -304,7 +311,9 @@ void H4Protocol::OnDataReady(int fd) {
                 if( hdr->layer_specific == HCI_READ_LOCAL_SUPPORTED_CMDS)
                         tpkt.data()[36] &= ~((uint8_t)0x1 << 3);
 
-            } else if (tpkt.data()[1] ==  HCI_COMMAND_STATUS_EVT) {
+            }
+#endif
+            if (tpkt.data()[1] ==  HCI_COMMAND_STATUS_EVT) {
                 ALOGV("%s Command status event ncmd = %d", __func__, tpkt.data()[4]);
                 tpkt.data()[4] = 1;
             }
