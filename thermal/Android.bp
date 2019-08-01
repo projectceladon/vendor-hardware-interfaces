@@ -1,0 +1,38 @@
+cc_library_shared {
+    name: "android.hardware.thermal@2.0-impl.intel",
+    defaults: ["hidl_defaults"],
+    proprietary: true,
+    relative_install_path: "hw",
+    srcs: ["Thermal.cpp"],
+    shared_libs: [
+        "liblog",
+        "libcutils",
+        "libhardware",
+        "libbase",
+        "libcutils",
+        "libutils",
+        "libhidlbase",
+        "libhidltransport",
+        "android.hardware.thermal@1.0",
+        "android.hardware.thermal@2.0",
+    ],
+}
+
+cc_binary {
+    name: "android.hardware.thermal@2.0-service.intel",
+    init_rc: ["android.hardware.thermal@2.0-service.intel.rc"],
+    proprietary: true,
+    defaults: ["hidl_defaults"],
+    relative_install_path: "hw",
+    srcs: ["service.cpp"],
+    shared_libs: [
+        "liblog",
+        "libdl",
+        "libutils",
+        "libhardware",
+        "libhidlbase",
+        "libhidltransport",
+        "android.hardware.thermal@1.0",
+        "android.hardware.thermal@2.0",
+    ],
+}
