@@ -179,6 +179,8 @@ void GlesCsExecutor::showOperationTimers()
         }
         sum += avg;
     }
+    if (sum == 0.0)
+        return;
 
     std::sort(operationTimers.begin(), operationTimers.end(), OperationCpuTimer::sort);
 
