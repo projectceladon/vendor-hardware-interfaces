@@ -198,7 +198,13 @@ bool VendorInterface::Open(InitializeCompleteCallback initialize_complete_cb,
   initialize_complete_cb_ = initialize_complete_cb;
 
   // Initialize vendor interface
+  static int temp = 1;
 
+  if (temp ==1 ) {
+  temp = 0;
+  ALOGE("%s vendor open returning false test",__func__);
+  return false;
+  }
   lib_handle_ = dlopen(VENDOR_LIBRARY_NAME, RTLD_NOW);
   if (!lib_handle_) {
     ALOGE("%s unable to open %s (%s)", __func__, VENDOR_LIBRARY_NAME,
