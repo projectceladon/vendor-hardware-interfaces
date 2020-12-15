@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,63 +14,27 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_HARDWARE_POWER_V1_2_POWER_H
-#define ANDROID_HARDWARE_POWER_V1_2_POWER_H
+#pragma once
 
-#include <android/hardware/power/1.2/IPower.h>
-#include <android/hardware/power/1.2/types.h>
+#include <aidl/android/hardware/power/BnPower.h>
 
-#include <hidl/Status.h>
-
-#include <hidl/MQDescriptor.h>
+namespace aidl {
 namespace android {
 namespace hardware {
 namespace power {
-namespace V1_2 {
-namespace implementation {
+namespace impl {
+namespace intel {
 
-using ::android::hardware::power::V1_0::Feature;
-using ::android::hardware::power::V1_0::PowerStatePlatformSleepState;
-using ::android::hardware::power::V1_0::Status;
-
-using ::android::hardware::power::V1_1::PowerStateSubsystem;
-using ::android::hardware::power::V1_1::PowerStateSubsystemSleepState;
-
-using ::android::hardware::power::V1_2::IPower;
-using ::android::hardware::power::V1_2::PowerHint;
-
-using ::android::hardware::Return;
-using ::android::hardware::Void;
-using ::android::hardware::hidl_vec;
-using ::android::hardware::hidl_string;
-using ::android::sp;
-
-struct Power : public IPower {
-    // Methods from ::android::hardware::power::V1_0::IPower follow.
-    Power(power_module_t* module);
-    ~Power();
-    Return<void> setInteractive(bool interactive)  override;
-    Return<void> powerHint(::android::hardware::power::V1_0::PowerHint hint, int32_t data)  override;
-    Return<void> setFeature(::android::hardware::power::V1_0::Feature feature, bool activate)  override;
-    Return<void> getPlatformLowPowerStats(getPlatformLowPowerStats_cb _hidl_cb)  override;
-
-    // Methods from ::android::hardware::power::V1_1::IPower follow.
-    Return<void> getSubsystemLowPowerStats(getSubsystemLowPowerStats_cb _hidl_cb) override;
-    Return<void> powerHintAsync(::android::hardware::power::V1_0::PowerHint hint, int32_t data) override;
-
-    // Methods from ::android::hardware::power::V1_2::IPower follow.
-    Return<void> powerHintAsync_1_2(PowerHint hint, int32_t data)   override;
-
-  private:
-    power_module_t* mModule;
+class Power : public BnPower {
+    ndk::ScopedAStatus setMode(Mode type, bool enabled) override;
+    ndk::ScopedAStatus isModeSupported(Mode type, bool* _aidl_return) override;
+    ndk::ScopedAStatus setBoost(Boost type, int32_t durationMs) override;
+    ndk::ScopedAStatus isBoostSupported(Boost type, bool* _aidl_return) override;
 };
 
-extern "C" IPower* HIDL_FETCH_IPower(const char* name);
-
-}  // namespace implementation
-}  // namespace V1_2
+}  // namespace intel
+}  // namespace impl
 }  // namespace power
 }  // namespace hardware
 }  // namespace android
-
-#endif  // ANDROID_HARDWARE_POWER_V1_2_POWER_H
+}  // namespace aidl
