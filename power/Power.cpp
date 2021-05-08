@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,179 +14,43 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "android.hardware.power@1.2-impl"
-
-#include <log/log.h>
-
-#include <hardware/hardware.h>
-#include <hardware/power.h>
-
 #include "Power.h"
 
+#include <android-base/logging.h>
+
+namespace aidl {
 namespace android {
 namespace hardware {
 namespace power {
-namespace V1_2 {
-namespace implementation {
+namespace impl {
+namespace intel {
 
-Power::Power(power_module_t *module) : mModule(module) {
-    if (mModule)
-        mModule->init(mModule);
+ndk::ScopedAStatus Power::setMode(Mode type, bool enabled) {
+    LOG(VERBOSE) << "Power setMode: " << static_cast<int32_t>(type) << " to: " << enabled;
+    return ndk::ScopedAStatus::ok();
 }
 
-Power::~Power() {
-    delete(mModule);
+ndk::ScopedAStatus Power::isModeSupported(Mode type, bool* _aidl_return) {
+    LOG(INFO) << "Power isModeSupported: " << static_cast<int32_t>(type);
+    *_aidl_return = false;
+    return ndk::ScopedAStatus::ok();
 }
 
-// Methods from ::android::hardware::power::V1_0::IPower follow.
-Return<void> Power::setInteractive(bool interactive)  {
-    if (mModule->setInteractive)
-        mModule->setInteractive(mModule, interactive ? 1 : 0);
-    return Void();
+ndk::ScopedAStatus Power::setBoost(Boost type, int32_t durationMs) {
+    LOG(VERBOSE) << "Power setBoost: " << static_cast<int32_t>(type)
+                 << ", duration: " << durationMs;
+    return ndk::ScopedAStatus::ok();
 }
 
-Return<void> Power::powerHint(::android::hardware::power::V1_0::PowerHint hint, int32_t data)  {
-    int32_t param = data;
-    if (mModule->powerHint) {
-        if (data)
-            mModule->powerHint(mModule, static_cast<power_hint_t>(hint), &param);
-        else
-            mModule->powerHint(mModule, static_cast<power_hint_t>(hint), NULL);
-    }
-    return Void();
+ndk::ScopedAStatus Power::isBoostSupported(Boost type, bool* _aidl_return) {
+    LOG(INFO) << "Power isBoostSupported: " << static_cast<int32_t>(type);
+    *_aidl_return = false;
+    return ndk::ScopedAStatus::ok();
 }
 
-Return<void> Power::setFeature(Feature feature, bool activate)  {
-    if (mModule->setFeature)
-        mModule->setFeature(mModule, static_cast<feature_t>(feature),
-                activate ? 1 : 0);
-    return Void();
-}
-
-Return<void> Power::getPlatformLowPowerStats(getPlatformLowPowerStats_cb _hidl_cb)  {
-    hidl_vec<PowerStatePlatformSleepState> states;
-    ssize_t number_platform_modes;
-    size_t *voters = nullptr;
-    power_state_platform_sleep_state_t *legacy_states = nullptr;
-    int ret;
-
-    if (mModule->get_number_of_platform_modes == nullptr ||
-            mModule->get_voter_list == nullptr ||
-            mModule->get_platform_low_power_stats == nullptr)
-    {
-        _hidl_cb(states, Status::SUCCESS);
-        return Void();
-    }
-
-    number_platform_modes = mModule->get_number_of_platform_modes(mModule);
-    if (number_platform_modes)
-    {
-       if ((ssize_t) (SIZE_MAX / sizeof(size_t)) <= number_platform_modes)  // overflow
-           goto done;
-       voters = new (std::nothrow) size_t [number_platform_modes];
-       if (voters == nullptr)
-           goto done;
-
-       ret = mModule->get_voter_list(mModule, voters);
-       if (ret != 0)
-           goto done;
-
-       if ((ssize_t) (SIZE_MAX / sizeof(power_state_platform_sleep_state_t))
-           <= number_platform_modes)  // overflow
-           goto done;
-       legacy_states = new (std::nothrow)
-           power_state_platform_sleep_state_t [number_platform_modes];
-       if (legacy_states == nullptr)
-           goto done;
-
-       for (int i = 0; i < number_platform_modes; i++)
-       {
-          legacy_states[i].voters = nullptr;
-          legacy_states[i].voters = new power_state_voter_t [voters[i]];
-          if (legacy_states[i].voters == nullptr)
-              goto done;
-       }
-
-       ret = mModule->get_platform_low_power_stats(mModule, legacy_states);
-       if (ret != 0)
-           goto done;
-
-       states.resize(number_platform_modes);
-       for (int i = 0; i < number_platform_modes; i++)
-       {
-          power_state_platform_sleep_state_t& legacy_state = legacy_states[i];
-          PowerStatePlatformSleepState& state = states[i];
-          state.name = legacy_state.name;
-          state.residencyInMsecSinceBoot = legacy_state.residency_in_msec_since_boot;
-          state.totalTransitions = legacy_state.total_transitions;
-          state.supportedOnlyInSuspend = legacy_state.supported_only_in_suspend;
-          state.voters.resize(voters[i]);
-          for(size_t j = 0; j < voters[i]; j++)
-          {
-              state.voters[j].name = legacy_state.voters[j].name;
-              state.voters[j].totalTimeInMsecVotedForSinceBoot = legacy_state.voters[j].total_time_in_msec_voted_for_since_boot;
-              state.voters[j].totalNumberOfTimesVotedSinceBoot = legacy_state.voters[j].total_number_of_times_voted_since_boot;
-          }
-       }
-    }
-done:
-    if (legacy_states)
-    {
-        for (int i = 0; i < number_platform_modes; i++)
-        {
-            if(legacy_states[i].voters)
-                delete(legacy_states[i].voters);
-        }
-    }
-    delete[] legacy_states;
-    delete[] voters;
-    _hidl_cb(states, Status::SUCCESS);
-    return Void();
-}
-
-// Methods from ::android::hardware::power::V1_1::IPower follow.
-Return<void> Power::getSubsystemLowPowerStats(getSubsystemLowPowerStats_cb _hidl_cb) {
-    hidl_vec<PowerStateSubsystem> subsystems;
-    subsystems.resize(0);
-    _hidl_cb(subsystems, Status::SUCCESS);
-    return Void();
-}
-
-Return<void> Power::powerHintAsync(::android::hardware::power::V1_0::PowerHint hint, int32_t data) {
-    return powerHint(hint, data);
-}
-
-// Methods from ::android::hardware::power::V1_2::IPower follow.
-Return<void> Power::powerHintAsync_1_2(PowerHint hint, int32_t data) {
-    return powerHint(static_cast<::android::hardware::power::V1_0::PowerHint>(hint), data);
-}
-
-IPower* HIDL_FETCH_IPower(const char* /* name */) {
-    const hw_module_t* hw_module = nullptr;
-    power_module_t* power_module = nullptr;
-    int err = hw_get_module(POWER_HARDWARE_MODULE_ID, &hw_module);
-    if (err) {
-        ALOGE("hw_get_module %s failed: %d", POWER_HARDWARE_MODULE_ID, err);
-        return nullptr;
-    }
-
-    if (!hw_module->methods || !hw_module->methods->open) {
-        power_module = reinterpret_cast<power_module_t*>(
-            const_cast<hw_module_t*>(hw_module));
-    } else {
-        err = hw_module->methods->open(
-            hw_module, POWER_HARDWARE_MODULE_ID,
-            reinterpret_cast<hw_device_t**>(&power_module));
-        if (err) {
-            ALOGE("Passthrough failed to load legacy HAL.");
-            return nullptr;
-        }
-    }
-    return new Power(power_module);
-}
-
-} // namespace implementation
-}  // namespace V1_2
+}  // namespace intel
+}  // namespace impl
 }  // namespace power
 }  // namespace hardware
 }  // namespace android
+}  // namespace aidl
