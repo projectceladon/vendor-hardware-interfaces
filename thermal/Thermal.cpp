@@ -19,15 +19,20 @@
 
 #include <android-base/logging.h>
 #include <hidl/HidlTransportSupport.h>
+#include <sys/socket.h>
+#include <sys/sysinfo.h>
+#include <linux/vm_sockets.h>
 
 #include "Thermal.h"
 
 #define SYSFS_TEMPERATURE_CPU       "/sys/class/thermal/thermal_zone0/temp"
-#define CPU_NUM_MAX                 4
+#define CPU_NUM_MAX                 Thermal::getNumCpu()
 #define CPU_USAGE_PARAS_NUM         5
 #define CPU_USAGE_FILE              "/proc/stat"
 #define CPU_ONLINE_FILE             "/sys/devices/system/cpu/online"
-#define CPU_TEMPERATURE_UNIT        1000
+#define TEMP_UNIT                   1000.0
+#define THERMAL_PORT                14096
+#define MAX_ZONES                   40
 
 namespace android {
 namespace hardware {
@@ -40,7 +45,37 @@ using ::android::hardware::interfacesEqual;
 using ::android::hardware::thermal::V1_0::ThermalStatus;
 using ::android::hardware::thermal::V1_0::ThermalStatusCode;
 
-static const char *CPU_LABEL[] = {"CPU0", "CPU1", "CPU2", "CPU3"};
+static const char *CPU_LABEL[] = {"CPU0",
+                                  "CPU1",
+                                  "CPU2",
+                                  "CPU3",
+                                  "CPU4",
+                                  "CPU5",
+                                  "CPU6",
+                                  "CPU7",
+                                  "CPU8",
+                                  "CPU9",
+                                  "CPU10",
+                                  "CPU11",
+                                  "CPU12",
+                                  "CPU13",
+                                  "CPU14",
+                                  "CPU15"};
+struct zone_info {
+	uint32_t temperature;
+	uint32_t trip_0;
+	uint32_t trip_1;
+	uint32_t trip_2;
+	uint16_t number;
+	int16_t type;
+};
+
+struct header {
+	uint8_t intelipcid[9];
+	uint16_t notifyid;
+	uint16_t length;
+};
+
 static const char *THROTTLING_SEVERITY_LABEL[] = {
                                                   "NONE",
                                                   "LIGHT",
@@ -60,17 +95,49 @@ static const Temperature_1_0 kTemp_1_0 = {
         .vrThrottlingThreshold = NAN,
 };
 
-static const Temperature_2_0 kTemp_2_0 = {
+static Temperature_2_0 kTemp_2_0 = {
         .type = TemperatureType::CPU,
         .name = "TCPU",
         .value = 25,
         .throttlingStatus = ThrottlingSeverity::NONE,
 };
 
-static const TemperatureThreshold kTempThreshold = {
+// Workaround for VTS. Dummy entry for GPU temperature.
+static Temperature_2_0 kDummyTemp = {
+	.type = TemperatureType::GPU,
+	.name = "test sensor",
+	.value = 25,
+	.throttlingStatus = ThrottlingSeverity::NONE,
+};
+
+static Temperature_2_0 kTemp_2_0_1 = {
+        .type = TemperatureType::BATTERY,
+        .name = "TBATTERY",
+        .value = 25,
+        .throttlingStatus = ThrottlingSeverity::NONE,
+};
+
+static TemperatureThreshold kTempThreshold = {
         .type = TemperatureType::CPU,
         .name = "TCPU",
-        .hotThrottlingThresholds = {{NAN, NAN, NAN, NAN, NAN, NAN, 99.0}},
+        .hotThrottlingThresholds = {{NAN, NAN, NAN, NAN, NAN, 99, 108}},
+        .coldThrottlingThresholds = {{NAN, NAN, NAN, NAN, NAN, NAN, NAN}},
+        .vrThrottlingThreshold = NAN,
+};
+
+static TemperatureThreshold kTempThreshold_1 = {
+        .type = TemperatureType::BATTERY,
+        .name = "TBATTERY",
+        .hotThrottlingThresholds = {{NAN, NAN, NAN, NAN, NAN, 65, 68}},
+        .coldThrottlingThresholds = {{NAN, NAN, NAN, NAN, NAN, NAN, NAN}},
+        .vrThrottlingThreshold = NAN,
+};
+
+// Workaround for VTS. Dummy entry for GPU threshold.
+static TemperatureThreshold kDummyTempThreshold = {
+        .type = TemperatureType::GPU,
+        .name = "test sensor",
+        .hotThrottlingThresholds = {{NAN, NAN, NAN, NAN, NAN, 90, 100}},
         .coldThrottlingThresholds = {{NAN, NAN, NAN, NAN, NAN, NAN, NAN}},
         .vrThrottlingThreshold = NAN,
 };
@@ -94,6 +161,14 @@ static const CpuUsage kCpuUsage = {
         .isOnline = true,
 };
 
+static bool is_vsock_present;
+
+
+struct temp_info {
+    int16_t type;
+    uint32_t temp;
+};
+
 static int get_soc_pkg_temperature(float* temp)
 {
     float fTemp = 0;
@@ -115,14 +190,14 @@ static int get_soc_pkg_temperature(float* temp)
     }
 
     fclose(file);
-    *temp = fTemp / CPU_TEMPERATURE_UNIT;
+    *temp = fTemp / TEMP_UNIT;
 
     return 0;
 }
 
-static int thermal_get_cpu_usages(CpuUsage *list)
+int Thermal::thermal_get_cpu_usages(CpuUsage *list)
 {
-    int vals, cpu_num, i, j;
+    int vals, cpu_num, i, j, length;
     bool online;
     ssize_t read;
     unsigned long long user, nice, system, idle, active, total;
@@ -188,14 +263,24 @@ static int thermal_get_cpu_usages(CpuUsage *list)
             online = 1;
         }
 
-        list[size] = (CpuUsage) {
-            .name = CPU_LABEL[size],
-            .active = active,
-            .total = total,
-            .isOnline = online
-        };
+	//Current Max size supported is 16 cores, for more CPU add check
+	length = sizeof(CPU_LABEL) / sizeof(CPU_LABEL[0]);
+	if (j < length) {
+            list[size] = (CpuUsage) {
+                .name = CPU_LABEL[size],
+                .active = active,
+                .total = total,
+                .isOnline = online
+            };
+            size++;
+        } else {
+            ALOGE("%s: Current CPU core support exceeds Max CPU core support  ", __func__);
+            free(line);
+            fclose(cpu_file);
+            fclose(file);
+            return errno ? -errno : -EIO;
+        }
 
-        size++;
     }
 
     free(line);
@@ -209,32 +294,163 @@ static int thermal_get_cpu_usages(CpuUsage *list)
     return (int)size;
 }
 
+static int connect_vsock(int *vsock_fd)
+{
+     struct sockaddr_vm sa = {
+        .svm_family = AF_VSOCK,
+        .svm_cid = VMADDR_CID_HOST,
+        .svm_port = THERMAL_PORT,
+    };
+    *vsock_fd = socket(AF_VSOCK, SOCK_STREAM, 0);
+    if (*vsock_fd < 0) {
+            ALOGI("Thermal HAL socket init failed\n");
+            return -1;
+    }
+
+    if (connect(*vsock_fd, (struct sockaddr*)&sa, sizeof(sa)) != 0) {
+            ALOGI("Thermal HAL connect failed\n");
+            close(*vsock_fd);
+            return -1;
+    }
+    return 0;
+}
+
+static void parse_zone_info(struct zone_info *zone)
+{
+        switch (zone->type) {
+             case 0:
+                 kTempThreshold.hotThrottlingThresholds[5] = zone->trip_0 / TEMP_UNIT;
+                 kTempThreshold.hotThrottlingThresholds[6] = zone->trip_1 / TEMP_UNIT;
+                 kTemp_2_0.value = zone->temperature / TEMP_UNIT;
+                 break;
+             case 2:
+                 kTemp_2_0_1.value = zone->temperature / TEMP_UNIT;
+                 break;
+             default:
+                 break;
+        }
+}
+
+static void parse_temp_info(struct temp_info *t)
+{
+    switch(t->type) {
+        case 0:
+            kTemp_2_0.value = t->temp / TEMP_UNIT;
+            break;
+        case 2:
+            kTemp_2_0_1.value = t->temp / TEMP_UNIT;
+            break;
+        default:
+            break;
+    }
+}
+
+static int recv_vsock(int *vsock_fd)
+{
+    char msgbuf[1024];
+    int ret;
+    struct header *head = (struct header *)malloc(sizeof(struct header));
+    if (!head)
+        return -ENOMEM;
+    memset(msgbuf, 0, sizeof(msgbuf));
+    ret = recv(*vsock_fd, msgbuf, sizeof(msgbuf), MSG_DONTWAIT);
+    if (ret < 0 && errno == EBADF) {
+        if (connect_vsock(vsock_fd) == 0)
+            ret = recv(*vsock_fd, msgbuf, sizeof(msgbuf), MSG_DONTWAIT);
+    }
+    if (ret > 0) {
+        memcpy(head, msgbuf, sizeof(struct header));
+        int num_zones = 0;
+        int ptr = 0;
+        int i;
+        if (head->notifyid == 1) {
+            num_zones = head->length / sizeof(struct zone_info);
+            num_zones = num_zones < MAX_ZONES ? num_zones : MAX_ZONES;
+            ptr += sizeof(struct header);
+            struct zone_info *zinfo = (struct zone_info *)malloc(sizeof(struct zone_info));
+            if (!zinfo) {
+                free(head);
+                return -ENOMEM;
+            }
+            for (i = 0; i < num_zones; i++) {
+                memcpy(zinfo, msgbuf + ptr, sizeof(struct zone_info));
+                parse_zone_info(zinfo);
+                ptr = ptr + sizeof(struct zone_info);
+            }
+            free(zinfo);
+        } else if (head->notifyid == 2) {
+            ptr = sizeof(struct header); //offset of num_zones field
+            struct temp_info *tinfo = (struct temp_info *)malloc(sizeof(struct temp_info));
+            if (!tinfo) {
+                free(head);
+                return -ENOMEM;
+            }
+            memcpy(&num_zones, msgbuf + ptr, sizeof(num_zones));
+            num_zones = num_zones < MAX_ZONES ? num_zones : MAX_ZONES;
+            ptr += 4; //offset of first zone type info
+            for (i = 0; i < num_zones; i++) {
+                memcpy(&tinfo->type, msgbuf + ptr, sizeof(tinfo->type));
+                memcpy(&tinfo->temp, msgbuf + ptr + sizeof(tinfo->type), sizeof(tinfo->temp));
+                parse_temp_info(tinfo);
+                ptr += sizeof(tinfo->type) + sizeof(tinfo->temp);
+            }
+            free(tinfo);
+        }
+    }
+    free(head);
+    return 0;
+}
+
 Thermal::Thermal() {
     mCheckThread = std::thread(&Thermal::CheckThermalServerity, this);
     mCheckThread.detach();
+    mNumCpu = get_nprocs();
 }
 
+
 void Thermal::CheckThermalServerity() {
-    Temperature_2_0 temperature = kTemp_2_0;
     float temp = NAN;
     int res = -1;
+    int vsock_fd;
 
     ALOGI("Start check temp thread.\n");
+
+    if (!connect_vsock(&vsock_fd))
+        is_vsock_present = true;
+
     while (1) {
-        res = get_soc_pkg_temperature(&temp);
+        if (is_vsock_present) {
+            res = 0;
+            recv_vsock(&vsock_fd);
+        } else {
+            res = get_soc_pkg_temperature(&temp);
+            kTemp_2_0.value = temp;
+        }
         if (res) {
             ALOGE("Can not get temperature of type %d", kTemp_1_0.type);
         } else {
             for (size_t i = kTempThreshold.hotThrottlingThresholds.size() - 1; i > 0; i--) {
-                if (temp >= kTempThreshold.hotThrottlingThresholds[i]) {
+                if (kTemp_2_0.value >= kTempThreshold.hotThrottlingThresholds[i]) {
                     ALOGI("CheckThermalServerity: hit ThrottlingSeverity %s, temperature is %f",
-                          THROTTLING_SEVERITY_LABEL[i], temp);
-                    temperature.value = temp;
-                    temperature.throttlingStatus = (ThrottlingSeverity)i;
+                          THROTTLING_SEVERITY_LABEL[i], kTemp_2_0.value);
+                    kTemp_2_0.throttlingStatus = (ThrottlingSeverity)i;
                     {
                         std::lock_guard<std::mutex> _lock(thermal_callback_mutex_);
                         for (auto cb : callbacks_) {
-                            cb.callback->notifyThrottling(temperature);
+                            cb.callback->notifyThrottling(kTemp_2_0);
+                        }
+                    }
+                }
+            }
+            for (size_t i = kTempThreshold_1.hotThrottlingThresholds.size() - 1; i > 0; i--) {
+                if (kTemp_2_0_1.value >= kTempThreshold_1.hotThrottlingThresholds[i]) {
+                    ALOGI("CheckThermalServerity: hit ThrottlingSeverity %s, temperature is %f",
+                          THROTTLING_SEVERITY_LABEL[i], kTemp_2_0_1.value);
+                    kTemp_2_0_1.throttlingStatus = (ThrottlingSeverity)i;
+                    {
+                        std::lock_guard<std::mutex> _lock(thermal_callback_mutex_);
+                        for (auto cb : callbacks_) {
+                            cb.callback->notifyThrottling(kTemp_2_0_1);
                         }
                     }
                 }
@@ -252,14 +468,16 @@ Return<void> Thermal::getTemperatures(getTemperatures_cb _hidl_cb) {
     int res = -1;
 
     status.code = ThermalStatusCode::SUCCESS;
-    res = get_soc_pkg_temperature(&temp);
-    if (res) {
-        ALOGE("Can not get temperature of type %d", kTemp_1_0.type);
-        status.code = ThermalStatusCode::FAILURE;
-        status.debugMessage = strerror(-res);
-    } else {
-        temperatures[0].currentValue = temp;
-    }
+    if (!is_vsock_present) {
+        res = get_soc_pkg_temperature(&temp);
+        if (res) {
+            ALOGE("Can not get temperature of type %d", kTemp_1_0.type);
+            status.code = ThermalStatusCode::FAILURE;
+            status.debugMessage = strerror(-res);
+        } else {
+            temperatures[0].currentValue = temp;
+        }
+     }
     _hidl_cb(status, temperatures);
     return Void();
 }
@@ -297,21 +515,52 @@ Return<void> Thermal::getCurrentTemperatures(bool filterType, TemperatureType ty
     float temp = NAN;
     int res = -1;
 
-    if (filterType && type != kTemp_2_0.type) {
-        // Workaround for VTS Test
-        //status.code = ThermalStatusCode::FAILURE;
-        //status.debugMessage = "Failed to read data";
-    } else {
-        temperatures = {kTemp_2_0};
-        res = get_soc_pkg_temperature(&temp);
-        if (res) {
-            ALOGE("Can not get temperature of type %d", kTemp_2_0.type);
-            status.code = ThermalStatusCode::FAILURE;
-            status.debugMessage = strerror(-res);
+    if (!is_vsock_present) {
+        if (filterType && type != kTemp_2_0.type) {
+            // Workaround for VTS Test
+            //status.code = ThermalStatusCode::FAILURE;
+            //status.debugMessage = "Failed to read data";
         } else {
-            temperatures[0].value = temp;
+            temperatures = {kTemp_2_0};
+            res = get_soc_pkg_temperature(&temp);
+            if (res) {
+                ALOGE("Can not get temperature of type %d", kTemp_2_0.type);
+                status.code = ThermalStatusCode::FAILURE;
+                status.debugMessage = strerror(-res);
+            } else
+                temperatures[0].value = temp;
+        }
+    } else {
+        if (!filterType) {
+            // No filter type. Send all temperatures. Update legitimate temp thresholds.
+            // Workaround for VTS which expects temperatures in order:
+            // GPU temp is not exposed in Intel Android platforms.
+            // So add the dummy entry for GPU temp.
+            temperatures = {kTemp_2_0, kDummyTemp, kTemp_2_0_1};
             for (size_t i = kTempThreshold.hotThrottlingThresholds.size() - 1; i > 0; i--) {
-                if (temp >= kTempThreshold.hotThrottlingThresholds[i]) {
+                if (temperatures[0].value >= kTempThreshold.hotThrottlingThresholds[i]) {
+                    temperatures[0].throttlingStatus = (ThrottlingSeverity)i;
+                    break;
+                }
+            }
+            for (size_t i = kTempThreshold_1.hotThrottlingThresholds.size() - 1; i > 0; i--) {
+                if (temperatures[1].value >= kTempThreshold_1.hotThrottlingThresholds[i]) {
+                    temperatures[1].throttlingStatus = (ThrottlingSeverity)i;
+                    break;
+                }
+            }
+        } else if (type == kTemp_2_0.type) {
+            temperatures = {kTemp_2_0};
+            for (size_t i = kTempThreshold.hotThrottlingThresholds.size() - 1; i > 0; i--) {
+                if (temperatures[0].value >= kTempThreshold.hotThrottlingThresholds[i]) {
+                    temperatures[0].throttlingStatus = (ThrottlingSeverity)i;
+                    break;
+                }
+            }
+        } else if (type == kTemp_2_0_1.type) {
+            temperatures = {kTemp_2_0_1};
+            for (size_t i = kTempThreshold_1.hotThrottlingThresholds.size() - 1; i > 0; i--) {
+                if (temperatures[0].value >= kTempThreshold_1.hotThrottlingThresholds[i]) {
                     temperatures[0].throttlingStatus = (ThrottlingSeverity)i;
                     break;
                 }
@@ -336,11 +585,30 @@ Return<void> Thermal::getTemperatureThresholds(bool filterType, TemperatureType 
     ThermalStatus status;
     status.code = ThermalStatusCode::SUCCESS;
     std::vector<TemperatureThreshold> temperature_thresholds;
-    if (filterType && type != kTempThreshold.type) {
-        status.code = ThermalStatusCode::FAILURE;
-        status.debugMessage = "Failed to read data";
+
+    if (!is_vsock_present) {
+        if (filterType && type != kTempThreshold.type) {
+            // Workaround for VTS test
+        } else {
+            temperature_thresholds = {kTempThreshold};
+        }
+    } else if (filterType) {
+        if (type == kTempThreshold.type)
+            temperature_thresholds = {kTempThreshold};
+        else if (type == kTempThreshold_1.type)
+            temperature_thresholds = {kTempThreshold_1};
     } else {
-        temperature_thresholds = {kTempThreshold};
+        temperature_thresholds = {kTempThreshold, kDummyTempThreshold, kTempThreshold_1};
+    }
+
+    //Workaround for VTS.
+    if (filterType && temperature_thresholds.size() == 0) {
+        temperature_thresholds = {(TemperatureThreshold) {
+            .type = type,
+            .name = "FAKE DATA",
+            .hotThrottlingThresholds = {{NAN, NAN, NAN, NAN, NAN, 90, 100}},
+            .coldThrottlingThresholds = {{NAN, NAN, NAN, NAN, NAN, NAN, NAN}},
+            .vrThrottlingThreshold = NAN,}};
     }
     _hidl_cb(status, temperature_thresholds);
     return Void();

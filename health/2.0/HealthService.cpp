@@ -20,6 +20,7 @@
 #include <health2/Health.h>
 #include <health2/service.h>
 #include <health2/powerSupplyType.h>
+#include <health2/battery_notifypkt.h>
 #include <hidl/HidlTransportSupport.h>
 
 #include <utils/String8.h>
@@ -34,14 +35,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
 using android::hardware::health::V1_0::BatteryStatus;
 using android::hardware::health::V1_0::BatteryHealth;
 using namespace android;
 
 #define POWER_SUPPLY_SUBSYSTEM "power_supply"
 #define POWER_SUPPLY_SYSFS_PATH "/sys/class/" POWER_SUPPLY_SUBSYSTEM
-
 
 unsigned int platformPowerSupplyType = BATTERY;
 
@@ -73,11 +72,12 @@ void healthd_board_init(struct healthd_config*)
 
 int healthd_board_battery_update(struct android::BatteryProperties *props)
 {
-
+    if (get_battery_properties(props))
+        platformPowerSupplyType = BATTERY;
     if (platformPowerSupplyType == CONSTANT_POWER) {
-        props->batteryStatus = android::BATTERY_STATUS_FULL;
-        props->batteryHealth = android::BATTERY_HEALTH_GOOD;
-        props->batteryLevel = 100;
+        props->batteryStatus = android::BATTERY_STATUS_UNKNOWN;
+        props->batteryHealth = android::BATTERY_HEALTH_UNKNOWN;
+        props->batteryLevel = 0;
         props->batteryChargeCounter= 1000000;
         props->batteryCurrent= 1000000;
         props->chargerAcOnline = true;
@@ -85,7 +85,7 @@ int healthd_board_battery_update(struct android::BatteryProperties *props)
         props->chargerWirelessOnline = false;
         props->maxChargingCurrent= 2500000;
         props->maxChargingVoltage= 4300000;
-        props->batteryPresent= true;
+        props->batteryPresent= false;
         props->batteryVoltage= 1200000;
         props->batteryTemperature= 25;
         props->batteryFullCharge= 4200000;
@@ -93,7 +93,6 @@ int healthd_board_battery_update(struct android::BatteryProperties *props)
         UNUSED(props);
     return 0;
 }
-
 
 int main(void) {
     return health_service_main();
