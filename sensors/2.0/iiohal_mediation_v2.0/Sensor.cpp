@@ -160,7 +160,7 @@ std::vector<Event> Sensor::readEvents() {
         event.u.vec3.y = iioc->devlist[mSensorInfo.sensorHandle].data[1];
         event.u.vec3.z = iioc->devlist[mSensorInfo.sensorHandle].data[2];
     } else {
-        event.u.vec3.x = event.u.vec3.x = event.u.vec3.x = 0;
+        event.u.vec3.x = event.u.vec3.y = event.u.vec3.z = 0;
     }
     event.u.vec3.status = SensorStatus::ACCURACY_HIGH;
     events.push_back(event);

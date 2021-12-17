@@ -13,9 +13,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+soong_config_module_type {
+    name: "senPlugin_cc_defaults",
+    module_type: "cc_defaults",
+    config_namespace: "senPlugin",
+    bool_variables: ["SENSOR_LIST"],
+    properties: ["cflags", "srcs"],
+}
+
+senPlugin_cc_defaults {
+    name: "senPlugin_defaults",
+    soong_config_variables: {
+        SENSOR_LIST: { cflags: ["-DSENSOR_LIST_ENABLED"],},
+    },
+}
+
 cc_binary {
     name: "android.hardware.sensors@2.0-service.intel",
-    defaults: ["hidl_defaults"],
+    defaults: ["hidl_defaults", "senPlugin_defaults"],
     vendor: true,
     relative_install_path: "hw",
 
