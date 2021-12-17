@@ -64,6 +64,7 @@ struct Sensors : public ISensorsInterface, public ISensorsEventCallback {
           mReadWakeLockQueueRun(false),
           mAutoReleaseWakeLockTime(0),
           mHasWakeLock(false) {
+#if SENSOR_LIST_ENABLED
         AddSensor<AccelSensor>();
         AddSensor<GyroSensor>();
         AddSensor<MagnetometerSensor>();
@@ -73,6 +74,7 @@ struct Sensors : public ISensorsInterface, public ISensorsEventCallback {
         AddSensor<GeomagnaticRotationVector>();
         AddSensor<OrientationSensor>();
         AddSensor<InclinometerSensor>();
+#endif
     }
 
     virtual ~Sensors() {
