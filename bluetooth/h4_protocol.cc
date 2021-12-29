@@ -181,6 +181,9 @@ void H4Protocol::OnPacketReady() {
     case HCI_PACKET_TYPE_SCO_DATA:
       sco_cb_(hci_packetizer_.GetPacket());
       break;
+    case HCI_PACKET_TYPE_ISO_DATA:
+      iso_cb_(hci_packetizer_.GetPacket());
+      break;
     default:
       LOG_ALWAYS_FATAL("%s: Unimplemented packet type %d", __func__,
                        static_cast<int>(hci_packet_type_));
@@ -227,18 +230,19 @@ void H4Protocol::OnDataReady(int fd) {
             LOG_ALWAYS_FATAL("%s: Read packet type error: %s", __func__,
                          strerror(errno));
         }
-        hci_packet_type_ = static_cast<HciPacketType>(tpkt.data()[0]);
-        if (hci_packet_type_ != HCI_PACKET_TYPE_ACL_DATA &&
-            hci_packet_type_ != HCI_PACKET_TYPE_SCO_DATA &&
-            hci_packet_type_ != HCI_PACKET_TYPE_EVENT) {
-          LOG_ALWAYS_FATAL("%s: Unimplemented packet type %d", __func__,
-                           static_cast<int>(hci_packet_type_));
-        } else {
+    hci_packet_type_ = static_cast<HciPacketType>(tpkt.data()[0]);
+    if (hci_packet_type_ != HCI_PACKET_TYPE_ACL_DATA &&
+        hci_packet_type_ != HCI_PACKET_TYPE_SCO_DATA &&
+        hci_packet_type_ != HCI_PACKET_TYPE_ISO_DATA &&
+        hci_packet_type_ != HCI_PACKET_TYPE_EVENT) {
+      LOG_ALWAYS_FATAL("%s: Unimplemented packet type %d", __func__,
+                       static_cast<int>(hci_packet_type_));
+    } else {
             if(tpkt.data()[1] == HCI_COMMAND_COMPLETE_EVT) {
                 ALOGD("%s Command complete event ncmds = %d",
                                                      __func__, tpkt.data()[3]);
                 tpkt.data()[3] = 1;
-		/* Disable Enhance setup synchronous connections*/
+               /* Disable Enhance setup synchronous connections*/
                 BT_EVENT_HDR* hdr  = (BT_EVENT_HDR*)(tpkt.data());
                 if( hdr->layer_specific == HCI_READ_LOCAL_SUPPORTED_CMDS)
                         tpkt.data()[36] &= ~((uint8_t)0x1 << 3);
@@ -249,8 +253,8 @@ void H4Protocol::OnDataReady(int fd) {
             }
 
             hci_packetizer_.CbHciPacket(tpkt.data() + 1, bytes_read - 1);
-        }
-    }
+   }
+}
 }
 
 }  // namespace hci
