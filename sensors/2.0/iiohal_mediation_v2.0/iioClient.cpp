@@ -115,15 +115,22 @@ bool iioClient::iioInit(void) {
 
     /* Read IP address from vendor property */
     char value[PROPERTY_VALUE_MAX] = {0};
+    #ifdef USE_NETWORK_CONTEXT
     property_get("vendor.intel.ipaddr", value, "invalid_ip_addr");
-
-    /* Create IIO context */
     ctx = iio_create_network_context(value);
     if (!ctx) {
         ALOGW("Retrying: Initialize IIO Client@%s with N/W backend.", value);
         return false;
     }
-
+    #endif
+    #ifdef USE_VM_CONTEXT
+    /* Create VM context */
+    ctx = iio_create_vm_context(SENSOR_PORT);
+    if (!ctx) {
+        ALOGW("Retrying: Initialize IIO Client with VSOCK");
+        return false;
+    }
+    #endif
     unsigned int nb_iio_devices = iio_context_get_devices_count(ctx);
     for (int i = 0; i < nb_iio_devices; i++) {
         const struct iio_device *device = iio_context_get_device(ctx, i);
