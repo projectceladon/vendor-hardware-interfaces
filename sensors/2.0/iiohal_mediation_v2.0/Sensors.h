@@ -56,6 +56,7 @@ struct Sensors : public ISensorsInterface, public ISensorsEventCallback {
     using WakeLockMessageQueue = MessageQueue<uint32_t, kSynchronizedReadWrite>;
 
     static constexpr const char* kWakeLockName = "SensorsHAL_WAKEUP";
+    char value[PROPERTY_VALUE_MAX] = {0};
 
     Sensors()
         : mEventQueueFlag(nullptr),
@@ -64,17 +65,18 @@ struct Sensors : public ISensorsInterface, public ISensorsEventCallback {
           mReadWakeLockQueueRun(false),
           mAutoReleaseWakeLockTime(0),
           mHasWakeLock(false) {
-#if SENSOR_LIST_ENABLED
-        AddSensor<AccelSensor>();
-        AddSensor<GyroSensor>();
-        AddSensor<MagnetometerSensor>();
-        AddSensor<LightSensor>();
-        AddSensor<GravitySensor>();
-        AddSensor<RotationVector>();
-        AddSensor<GeomagnaticRotationVector>();
-        AddSensor<OrientationSensor>();
-        AddSensor<InclinometerSensor>();
-#endif
+        property_get("vendor.intel.sensors_available", value, "invalid_sensor_info");
+        if(strcmp(value,"true")==0){
+            AddSensor<AccelSensor>();
+            AddSensor<GyroSensor>();
+            AddSensor<MagnetometerSensor>();
+            AddSensor<LightSensor>();
+            AddSensor<GravitySensor>();
+            AddSensor<RotationVector>();
+            AddSensor<GeomagnaticRotationVector>();
+            AddSensor<OrientationSensor>();
+            AddSensor<InclinometerSensor>();
+        }
     }
 
     virtual ~Sensors() {
