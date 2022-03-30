@@ -354,7 +354,8 @@ static int recv_vsock(int *vsock_fd)
         return -ENOMEM;
     memset(msgbuf, 0, sizeof(msgbuf));
     ret = recv(*vsock_fd, msgbuf, sizeof(msgbuf), MSG_DONTWAIT);
-    if (ret < 0 && errno == EBADF) {
+    if (ret < 0 ) {
+        close(*vsock_fd);
         if (connect_vsock(vsock_fd) == 0)
             ret = recv(*vsock_fd, msgbuf, sizeof(msgbuf), MSG_DONTWAIT);
     }

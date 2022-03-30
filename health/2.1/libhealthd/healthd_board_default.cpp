@@ -158,6 +158,10 @@ static void recv_vsock() {
                 parse_battery_properties(mpkt);
             }
         }
+        else {
+            close(vsock_fd);
+            connect_vsock(&vsock_fd);
+        }
         sleep(1);
     }
     free(ipkt);
