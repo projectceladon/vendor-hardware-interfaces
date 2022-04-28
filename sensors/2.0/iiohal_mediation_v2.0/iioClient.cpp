@@ -14,8 +14,15 @@
  * limitations under the License.
  *
  */
-
+#include <sys/socket.h>
+#include <linux/vm_sockets.h>
 #include "iioClient.h"
+
+struct sockaddr_vm sa = {
+    .svm_family = AF_VSOCK,
+    .svm_cid = VMADDR_CID_HOST,
+    .svm_port = 30431,
+};
 
 iioClient *iioClient::iioc = NULL;
 /**
@@ -52,6 +59,8 @@ int iioClient::get_sensorid_by_name(const char *name) {
     return -1;
 }
 
+int socket_fd;
+
 void iioClient::iioThread(struct iioclient_device *devlist) {
     /**
      * Incase sensor not initialized initialize
@@ -60,6 +69,9 @@ void iioClient::iioThread(struct iioclient_device *devlist) {
     iioClient *iioc = iioClient::get_iioClient();
     while (!iioc->is_iioc_initialized && !iioc->iioInit())
         sleep(5);
+
+    //reserve socket file descriptor
+    socket_fd = get_reserve_fd_context();
 
     /* post initialization of iio-devices to align with
      * android sensor fwk.*/
@@ -88,7 +100,21 @@ void iioClient::iioThread(struct iioclient_device *devlist) {
                 char buf[1024] = {0};
                 if (iio_channel_attr_read(channel, "raw", buf, sizeof(buf)) > 0)
                     devlist[id].data[index] = strtof(buf, NULL) * devlist[id].scale;
-            }
+		else{
+                        close(socket_fd);
+                        int fd = socket(AF_VSOCK, SOCK_STREAM, 0);
+                        if (fd < 0) {
+				ALOGW("Sensor HAL socket init failed\n");
+                        }
+
+                        if (connect(fd, (struct sockaddr*)&sa, sizeof(sa)) != 0) {
+				ALOGW("Sensor HAL connect failed\n");
+                                close(fd);
+
+                        }
+                        socket_fd = fd ;
+                    }
+             }
 #if 0  // data probing point for debug
             sleep(1);
             ALOGI("%s -> data[%d](%f, %f, %f)",
@@ -115,15 +141,22 @@ bool iioClient::iioInit(void) {
 
     /* Read IP address from vendor property */
     char value[PROPERTY_VALUE_MAX] = {0};
+    #ifdef USE_NETWORK_CONTEXT
     property_get("vendor.intel.ipaddr", value, "invalid_ip_addr");
-
-    /* Create IIO context */
     ctx = iio_create_network_context(value);
     if (!ctx) {
         ALOGW("Retrying: Initialize IIO Client@%s with N/W backend.", value);
         return false;
     }
-
+    #endif
+    #ifdef USE_VM_CONTEXT
+    /* Create VM context */
+    ctx = iio_create_vm_context(SENSOR_PORT);
+    if (!ctx) {
+        ALOGW("Retrying: Initialize IIO Client with VSOCK");
+        return false;
+    }
+    #endif
     unsigned int nb_iio_devices = iio_context_get_devices_count(ctx);
     for (int i = 0; i < nb_iio_devices; i++) {
         const struct iio_device *device = iio_context_get_device(ctx, i);
