@@ -1,0 +1,4 @@
+service vendor.power-default /vendor/bin/hw/android.hardware.power-service.intel
+    class hal
+    user system
+    group system
