@@ -330,7 +330,7 @@ GyroSensor::GyroSensor(int32_t sensorHandle,
     mSensorInfo.name = "Gyro Sensor";
     mSensorInfo.vendor = "Intel";
     mSensorInfo.version = 1;
-    mSensorInfo.type = SensorType::GYROSCOPE;
+    mSensorInfo.type = SensorType::GYROSCOPE_UNCALIBRATED;
     mSensorInfo.typeAsString = "";
     mSensorInfo.maxRange = 1000.0f * M_PI / 180.0f;
     mSensorInfo.resolution = 1000.0f * M_PI / (180.0f * 32768.0f);
