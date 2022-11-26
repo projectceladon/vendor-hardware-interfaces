@@ -98,9 +98,23 @@ struct Sensors : public ISensorsInterface, public ISensorsEventCallback {
     }
 
     Return<Result> setOperationMode(OperationMode mode) override {
-        for (auto sensor : mSensors) {
-            sensor.second->setOperationMode(mode);
+	    ALOGE("ww45  Sensors.h called setOperationMode %d",mode);
+
+#ifndef DISABLE_STATIC_SENSOR_LIST
+ ALOGE("ww45 Sensors.h setOperationMode data injection");	    
+
+		if(mode == OperationMode::DATA_INJECTION && !(mSensors.size() > 0)) {
+
+			ALOGE("ww45 Sensors.h setOperationMode data injection returning BAD_VALUE");
+
+			return Result::BAD_VALUE;
+
+		}
+
+       for (auto sensor : mSensors) {
+          sensor.second->setOperationMode(mode);
         }
+#endif	
         return Result::OK;
     }
 
