@@ -98,9 +98,23 @@ struct Sensors : public ISensorsInterface, public ISensorsEventCallback {
     }
 
     Return<Result> setOperationMode(OperationMode mode) override {
+	     ALOGE("H_shivani  Sensors.h called setOperationMode %d",mode);
+
+#ifndef DISABLE_STATIC_SENSOR_LIST
+ ALOGE("H_shivani Sensors.h setOperationMode data injection");
+
+	             if(mode == OperationMode::DATA_INJECTION && !(mSensors.size() > 0)) {
+
+		             ALOGE("H_shivani  setOperationMode data injection returning BAD_VALUE");
+
+	                     return Result::BAD_VALUE;
+
+	              }
+
         for (auto sensor : mSensors) {
             sensor.second->setOperationMode(mode);
         }
+#endif	
         return Result::OK;
     }
 
