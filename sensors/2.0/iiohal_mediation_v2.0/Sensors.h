@@ -98,6 +98,9 @@ struct Sensors : public ISensorsInterface, public ISensorsEventCallback {
     }
 
     Return<Result> setOperationMode(OperationMode mode) override {
+	if(mSensors.size() <= 0) {
+            return Result::BAD_VALUE;
+        }
         for (auto sensor : mSensors) {
             sensor.second->setOperationMode(mode);
         }
