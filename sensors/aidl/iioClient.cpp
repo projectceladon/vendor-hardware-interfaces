@@ -295,7 +295,7 @@ int iioClient::activate(int handle, bool enabled) {
  */
 int iioClient::batch(int handle, int32_t sampling_period_ns) {
     if ((handle < 0) || (handle >= MAX_SENSOR)) {
-        ALOGE("Warning: batch invalid handle sampling_time(%d) sensor hadle(%d) is out of range",
+        ALOGE("Warning: batch invalid handle sampling_time(%d) sensor handle(%d) is out of range",
               sampling_period_ns, handle);
         return 0;
     }
