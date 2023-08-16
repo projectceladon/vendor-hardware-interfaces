@@ -16,6 +16,11 @@
 
 #include <cmath>
 #include <set>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <glob.h>
 
 #include <android-base/logging.h>
 #include <hidl/HidlTransportSupport.h>
@@ -169,14 +174,59 @@ struct temp_info {
     uint32_t temp;
 };
 
+std::vector<std::string> getThermalZonePaths() {
+    std::vector<std::string> thermalZonePaths;
+
+    glob_t globResult;
+    if (glob("/sys/class/thermal/thermal_zone*", 0, nullptr, &globResult) == 0) {
+        for (size_t i = 0; i < globResult.gl_pathc; ++i) {
+            thermalZonePaths.push_back(globResult.gl_pathv[i]);
+        }
+        globfree(&globResult);
+    }
+
+    return thermalZonePaths;
+}
+
+std::string readTypeAttribute(const std::string& thermalZonePath) {
+    std::ifstream typeFile(thermalZonePath + "/type");
+    if (!typeFile.is_open()) {
+        return "";
+    }
+
+    std::string type;
+    typeFile >> type;
+    typeFile.close();
+
+    return type;
+}
+
+std::string getThermalZoneCPUTemperaturePath(){
+    std::vector<std::string> thermalZonePaths = getThermalZonePaths();
+
+    for (const std::string& thermalZonePath : thermalZonePaths) {
+        std::string thermalType = readTypeAttribute(thermalZonePath);
+        if (!thermalType.empty()) {
+            if (thermalType == "x86_pkg_temp") {
+                return thermalZonePath + "/temp";
+            } 
+        }
+    }
+    return "";
+}
+
 static int get_soc_pkg_temperature(float* temp)
 {
     float fTemp = 0;
     int len = 0;
     FILE *file = NULL;
 
-    file = fopen(SYSFS_TEMPERATURE_CPU, "r");
+    std::string thermalTypePath = getThermalZoneCPUTemperaturePath();
+    ALOGE("Thermal zone path Temp path for x86_pkg_temp:%s", thermalTypePath.c_str());
+    if(thermalTypePath.empty())
+        return -errno;
 
+    file = fopen(thermalTypePath.c_str(), "r");
     if (file == NULL) {
         ALOGE("%s: failed to open file: %s", __func__, strerror(errno));
         return -errno;
