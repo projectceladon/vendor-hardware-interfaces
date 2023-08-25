@@ -82,10 +82,18 @@ class iioClient {
 
  public:
     static iioClient *get_iioClient() {
+    char value[PROPERTY_VALUE_MAX] = {0};
+        property_get("vendor_virtual_device_prop", value, "invalid_ip_addr");
+        if(strcmp(value, "bare-metal")){
         if (!iioc)
             iioc = new iioClient;
 
         return iioc;
+        }
+        else
+        {
+            return NULL;
+        }
     }
     /**
      * distructor called when iioclient object deleted.
