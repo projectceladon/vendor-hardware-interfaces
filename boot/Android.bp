@@ -19,7 +19,4 @@ cc_library_shared {
     static_libs: [
         "libfstab",
     ],
-    include_dirs: [
-        "hardware/intel/bootctrl",
-    ],
 }
