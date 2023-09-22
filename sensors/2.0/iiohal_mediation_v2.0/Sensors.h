@@ -101,7 +101,7 @@ struct Sensors : public ISensorsInterface, public ISensorsEventCallback {
 	if(mSensors.size() <= 0) {
             return Result::BAD_VALUE;
         }
-        for (auto sensor : mSensors) {
+        for (auto& sensor : mSensors) {
             sensor.second->setOperationMode(mode);
         }
         return Result::OK;
@@ -134,7 +134,7 @@ struct Sensors : public ISensorsInterface, public ISensorsEventCallback {
         Result result = Result::OK;
 
         // Ensure that all sensors are disabled
-        for (auto sensor : mSensors) {
+        for (auto& sensor : mSensors) {
             sensor.second->activate(false /* enable */);
         }
 
@@ -247,9 +247,11 @@ struct Sensors : public ISensorsInterface, public ISensorsEventCallback {
      * Utility function to delete the Event Flag
      */
     void deleteEventFlag() {
-        status_t status = EventFlag::deleteEventFlag(&mEventQueueFlag);
-        if (status != OK) {
-            ALOGI("Failed to delete event flag: %d", status);
+        if (mEventQueueFlag != nullptr) {
+            status_t status = EventFlag::deleteEventFlag(&mEventQueueFlag);
+            if (status != OK) {
+                ALOGI("Failed to delete event flag: %d", status);
+            }
         }
     }
 
