@@ -31,13 +31,15 @@ static int add_attr_to_channel(struct iio_channel *chn, xmlNode *n)
 
     for (attr = n->properties; attr; attr = attr->next) {
         if (!strcmp((char *) attr->name, "name")) {
-            name = (char *) attr->children->content;
-            if (!name)
-                goto err_free;
+            name = iio_strdup((char *) attr->children->content);
+            // name = (char *) attr->children->content;
+            // if (!name)
+            //     goto err_free;
         } else if (!strcmp((char *) attr->name, "filename")) {
-            filename = (char *) attr->children->content;
-            if (!filename)
-                goto err_free;
+            filename = iio_strdup((char *) attr->children->content);
+            // filename = (char *) attr->children->content;
+            // if (!filename)
+            //     goto err_free;
         } else {
             WARNING("Unknown field \'%s\' in channel %s\n",
                     attr->name, chn->id);
@@ -80,7 +82,8 @@ static int add_attr_to_device(struct iio_device *dev, xmlNode *n, enum iio_attr_
 
     for (attr = n->properties; attr; attr = attr->next) {
         if (!strcmp((char *) attr->name, "name")) {
-            name = (char *) attr->children->content;
+            name = iio_strdup((char *) attr->children->content);
+            // name = (char *) attr->children->content;
         } else {
             WARNING("Unknown field \'%s\' in device %s\n",
                     attr->name, dev->id);

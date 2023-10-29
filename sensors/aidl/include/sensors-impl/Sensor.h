@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,43 +14,33 @@
  * limitations under the License.
  */
 
-#ifndef SENSORS_2_0_IIOHAL_MEDIATION_V2_0_SENSOR_H_
-#define SENSORS_2_0_IIOHAL_MEDIATION_V2_0_SENSOR_H_
-
-#include <android/hardware/sensors/1.0/types.h>
-#include <android/hardware/sensors/2.1/types.h>
-
-#include <condition_variable>
-#include <memory>
-#include <mutex>
 #include <thread>
-#include <vector>
-
 #include "iioClient.h"
+#include <aidl/android/hardware/sensors/BnSensors.h>
 
+namespace aidl {
 namespace android {
 namespace hardware {
 namespace sensors {
-namespace V2_X {
-namespace implementation {
-
-static constexpr float kDefaultMaxDelayUs = 10 * 1000 * 1000;
 
 class ISensorsEventCallback {
- public:
-    using Event = ::android::hardware::sensors::V2_1::Event;
+  public:
+    using Event = ::aidl::android::hardware::sensors::Event;
 
-    virtual ~ISensorsEventCallback() {}
+    virtual ~ISensorsEventCallback(){};
     virtual void postEvents(const std::vector<Event>& events, bool wakeup) = 0;
 };
 
 class Sensor {
- public:
-    using OperationMode = ::android::hardware::sensors::V1_0::OperationMode;
-    using Result = ::android::hardware::sensors::V1_0::Result;
-    using Event = ::android::hardware::sensors::V2_1::Event;
-    using SensorInfo = ::android::hardware::sensors::V2_1::SensorInfo;
-    using SensorType = ::android::hardware::sensors::V2_1::SensorType;
+  public:
+    using OperationMode = ::aidl::android::hardware::sensors::ISensors::OperationMode;
+    using Event = ::aidl::android::hardware::sensors::Event;
+    using EventPayload = ::aidl::android::hardware::sensors::Event::EventPayload;
+    using SensorInfo = ::aidl::android::hardware::sensors::SensorInfo;
+    using SensorType = ::aidl::android::hardware::sensors::SensorType;
+    using MetaDataEventType =
+            ::aidl::android::hardware::sensors::Event::EventPayload::MetaData::MetaDataEventType;
+    
     iioClient *iioc;
 
     Sensor(ISensorsEventCallback* callback);
@@ -59,13 +49,13 @@ class Sensor {
     const SensorInfo& getSensorInfo() const;
     void batch(int32_t samplingPeriodNs);
     virtual void activate(bool enable);
-    Result flush();
+    ndk::ScopedAStatus flush();
 
     void setOperationMode(OperationMode mode);
     bool supportsDataInjection() const;
-    Result injectEvent(const Event& event);
+    ndk::ScopedAStatus injectEvent(const Event& event);
 
- protected:
+  protected:
     void run();
     virtual std::vector<Event> readEvents();
     static void startThread(Sensor* sensor);
@@ -88,31 +78,31 @@ class Sensor {
 };
 
 class OnChangeSensor : public Sensor {
- public:
+  public:
     OnChangeSensor(ISensorsEventCallback* callback);
 
     virtual void activate(bool enable) override;
 
- protected:
+  protected:
     virtual std::vector<Event> readEvents() override;
 
- protected:
+  protected:
     Event mPreviousEvent;
     bool mPreviousEventSet;
 };
 
 class AccelSensor : public Sensor {
- public:
+  public:
     AccelSensor(int32_t sensorHandle, ISensorsEventCallback* callback);
 };
 
 class GyroSensor : public Sensor {
- public:
+  public:
     GyroSensor(int32_t sensorHandle, ISensorsEventCallback* callback);
 };
 
 class AmbientTempSensor : public OnChangeSensor {
- public:
+  public:
     AmbientTempSensor(int32_t sensorHandle, ISensorsEventCallback* callback);
 };
 
@@ -122,27 +112,27 @@ class DeviceTempSensor : public OnChangeSensor {
 };
 
 class PressureSensor : public Sensor {
- public:
+  public:
     PressureSensor(int32_t sensorHandle, ISensorsEventCallback* callback);
 };
 
 class MagnetometerSensor : public Sensor {
- public:
+  public:
     MagnetometerSensor(int32_t sensorHandle, ISensorsEventCallback* callback);
 };
 
 class LightSensor : public OnChangeSensor {
- public:
+  public:
     LightSensor(int32_t sensorHandle, ISensorsEventCallback* callback);
 };
 
 class ProximitySensor : public OnChangeSensor {
- public:
+  public:
     ProximitySensor(int32_t sensorHandle, ISensorsEventCallback* callback);
 };
 
 class RelativeHumiditySensor : public OnChangeSensor {
- public:
+  public:
     RelativeHumiditySensor(int32_t sensorHandle, ISensorsEventCallback* callback);
 };
 
@@ -171,10 +161,12 @@ class InclinometerSensor : public Sensor {
     InclinometerSensor(int32_t sensorHandle, ISensorsEventCallback* callback);
 };
 
-}  // namespace implementation
-}  // namespace V2_X
+class HingeAngleSensor : public OnChangeSensor {
+  public:
+    HingeAngleSensor(int32_t sensorHandle, ISensorsEventCallback* callback);
+};
+
 }  // namespace sensors
 }  // namespace hardware
 }  // namespace android
-
-#endif  // SENSORS_2_0_IIOHAL_MEDIATION_V2_0_SENSOR_H_
+}  // namespace aidl
