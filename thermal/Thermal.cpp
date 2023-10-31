@@ -209,7 +209,7 @@ std::string getThermalZoneCPUTemperaturePath(){
         if (!thermalType.empty()) {
             if (thermalType == "x86_pkg_temp") {
                 return thermalZonePath + "/temp";
-            } 
+            }
         }
     }
     return "";
@@ -222,9 +222,10 @@ static int get_soc_pkg_temperature(float* temp)
     FILE *file = NULL;
 
     std::string thermalTypePath = getThermalZoneCPUTemperaturePath();
-    ALOGE("Thermal zone path Temp path for x86_pkg_temp:%s", thermalTypePath.c_str());
-    if(thermalTypePath.empty())
+    if (thermalTypePath.empty()) {
+        ALOGE("%s: failed to get thermalTypePath: %s", __func__, strerror(errno));
         return -errno;
+    }
 
     file = fopen(thermalTypePath.c_str(), "r");
     if (file == NULL) {
