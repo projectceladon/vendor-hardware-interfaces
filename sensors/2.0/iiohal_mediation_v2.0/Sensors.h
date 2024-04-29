@@ -65,9 +65,11 @@ struct Sensors : public ISensorsInterface, public ISensorsEventCallback {
           mAutoReleaseWakeLockTime(0),
           mHasWakeLock(false) {
 #if SENSOR_LIST_ENABLED
+#ifndef FEATURE_AUTOMOTIVE
         AddSensor<AccelSensor>();
         AddSensor<GyroSensor>();
         AddSensor<MagnetometerSensor>();
+#endif
         AddSensor<LightSensor>();
         AddSensor<GravitySensor>();
         AddSensor<RotationVector>();
