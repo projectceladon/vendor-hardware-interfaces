@@ -141,7 +141,10 @@ ScopedAStatus Sensors::registerDirectChannel(const ISensors::SharedMemInfo& /* i
 }
 
 ScopedAStatus Sensors::setOperationMode(OperationMode in_mode) {
-    for (auto sensor : mSensors) {
+	if(mSensors.size() <= 0) {
+            return ScopedAStatus::fromServiceSpecificError(static_cast<int32_t>(ERROR_BAD_VALUE));
+        }
+    	for (auto sensor : mSensors) {
         sensor.second->setOperationMode(in_mode);
     }
     return ScopedAStatus::ok();
