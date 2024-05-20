@@ -17,6 +17,7 @@
 #define LOG_TAG "android.hardware.bluetooth@1.0-service.vbt"
 #include "bluetooth_hci.h"
 
+#define LOG_NDEBUG 0
 #include <log/log.h>
 
 #include "vendor_interface.h"
@@ -73,18 +74,21 @@ Return<void> BluetoothHci::initialize(
         }
       },
       [cb](const hidl_vec<uint8_t>& packet) {
+              ALOGE("VendorInterface -> hciEventReceived() callback");
         auto hidl_status = cb->hciEventReceived(packet);
         if (!hidl_status.isOk()) {
           ALOGE("VendorInterface -> Unable to call hciEventReceived()");
         }
       },
       [cb](const hidl_vec<uint8_t>& packet) {
+       ALOGE("VendorInterface -> aclDataReceived() callback");
         auto hidl_status = cb->aclDataReceived(packet);
         if (!hidl_status.isOk()) {
           ALOGE("VendorInterface -> Unable to call aclDataReceived()");
         }
       },
       [cb](const hidl_vec<uint8_t>& packet) {
+	      ALOGE("VendorInterface -> scoDataReceived callback");
         auto hidl_status = cb->scoDataReceived(packet);
         if (!hidl_status.isOk()) {
           ALOGE("VendorInterface -> Unable to call scoDataReceived()");
@@ -115,6 +119,14 @@ Return<void> BluetoothHci::close() {
 }
 
 Return<void> BluetoothHci::sendHciCommand(const hidl_vec<uint8_t>& command) {
+   char cstr[100] = {0};
+
+   for (const auto& c : command) {
+     snprintf(cstr, 1, "%d", c);
+   }
+
+  ALOGE("BluetoothHci::sendHciCommand, %s", cstr);
+
   sendDataToController(HCI_DATA_TYPE_COMMAND, command);
   return Void();
 }
