@@ -114,6 +114,7 @@ class ExternalCameraProvider : public BnCameraProvider {
     std::shared_ptr<ICameraProviderCallback> mCallback = nullptr;
     std::unordered_map<std::string, CameraDeviceStatus> mCameraStatusMap;  // camera id -> status
     const ExternalCameraConfig mCfg;
+    const ExternalCameraConfig mRemoteCfg;
     std::shared_ptr<HotplugThread> mHotPlugThread;
 };
 

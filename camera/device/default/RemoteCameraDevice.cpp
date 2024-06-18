@@ -53,7 +53,7 @@ using ::aidl::android::hardware::camera::common::Status;
 
 RemoteCameraDevice::RemoteCameraDevice(const std::string& devicePath, const int clientFd,
                                            const ExternalCameraConfig& config)
-    : mFd(clientFd), mCameraId(devicePath), mCfg(config) {    
+    : mFd(clientFd), mCameraId(devicePath), mRemoteCfg(config) {    
 }
 
 RemoteCameraDevice::~RemoteCameraDevice() {}
@@ -152,7 +152,7 @@ ndk::ScopedAStatus RemoteCameraDevice::open(
     free(config_cmd_packet);
     
     session = createSession(in_callback, mSupportedFormats, mCroppingType,
-                            mCameraCharacteristics, mFd);
+                            mCameraCharacteristics, mFd, mRemoteCfg);
     
     if (session == nullptr) {
         ALOGE("%s: camera device session allocation failed", __FUNCTION__);
@@ -189,9 +189,9 @@ ndk::ScopedAStatus RemoteCameraDevice::getTorchStrengthLevel(int32_t*) {
 std::shared_ptr<RemoteCameraDeviceSession> RemoteCameraDevice::createSession(
         const std::shared_ptr<ICameraDeviceCallback>& cb,
         const std::vector<SupportedV4L2Format>& sortedFormats, const CroppingType& croppingType,
-        const common::V1_0::helper::CameraMetadata& chars, int vsockFd) {
+        const common::V1_0::helper::CameraMetadata& chars, int vsockFd, const ExternalCameraConfig& config) {
     return ndk::SharedRefBase::make<RemoteCameraDeviceSession>(
-            cb, sortedFormats, croppingType, chars, vsockFd);
+            cb, sortedFormats, croppingType, chars, vsockFd, config);
 }
 
 bool RemoteCameraDevice::isInitFailed() {
@@ -326,7 +326,7 @@ status_t RemoteCameraDevice::initDefaultCharsKeys(
     UPDATE(ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES, jpegAvailableThumbnailSizes,
            ARRAY_SIZE(jpegAvailableThumbnailSizes));
 
-    const int32_t jpegMaxSize = mCfg.maxJpegBufSize;
+    const int32_t jpegMaxSize = mRemoteCfg.maxJpegBufSize;
     UPDATE(ANDROID_JPEG_MAX_SIZE, &jpegMaxSize, 1);
 
     // android.lens
@@ -585,16 +585,17 @@ status_t RemoteCameraDevice::initOutputCharsKeys(
 
     // Caculate fps, we set it as fixed 30fps.
     calculateMinFps(metadata);
-    int32_t activeArraySize[] = {0, 0, DEFAULT_WIDTH, DEFAULT_HEIGHT};
-    activeArraySize[2] = DEFAULT_WIDTH;//mCaptureManager->getWidth(mCameraId);
-    activeArraySize[3] = DEFAULT_HEIGHT;//mCaptureManager->getHeight(mCameraId);
+    ALOGI("%s remote_camera value of defaultWidth89:%d value of defaultHeight89:%d",__FUNCTION__,mRemoteCfg.defaultWidth,mRemoteCfg.defaultHeight);
+    int32_t activeArraySize[] = {0, 0, mRemoteCfg.defaultWidth, mRemoteCfg.defaultHeight};
+    activeArraySize[2] = mRemoteCfg.defaultWidth;//mCaptureManager->getWidth(mCameraId);
+    activeArraySize[3] = mRemoteCfg.defaultHeight;//mCaptureManager->getHeight(mCameraId); hello
 
     // int32_t pixelArraySize[] = {0, 0, 1920, 1080};
     // pixelArraySize[2] = mCaptureManager->getWidth(mCameraId);
     // pixelArraySize[3] = mCaptureManager->getHeight(mCameraId);
-    int32_t pixelArraySize[] = {DEFAULT_WIDTH, DEFAULT_HEIGHT};
-    pixelArraySize[0] = DEFAULT_WIDTH;//mCaptureManager->getWidth(mCameraId);
-    pixelArraySize[1] = DEFAULT_HEIGHT;//mCaptureManager->getHeight(mCameraId);
+    int32_t pixelArraySize[] = {mRemoteCfg.defaultWidth, mRemoteCfg.defaultHeight};
+    pixelArraySize[0] = mRemoteCfg.defaultWidth;//mCaptureManager->getWidth(mCameraId);
+    pixelArraySize[1] = mRemoteCfg.defaultHeight;//mCaptureManager->getHeight(mCameraId);
     UPDATE(ANDROID_SENSOR_INFO_PRE_CORRECTION_ACTIVE_ARRAY_SIZE, activeArraySize,
            ARRAY_SIZE(activeArraySize));
     UPDATE(ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE, activeArraySize, ARRAY_SIZE(activeArraySize));
@@ -693,21 +694,31 @@ status_t RemoteCameraDevice::calculateMinFps(
 
 std::vector<SupportedV4L2Format> RemoteCameraDevice::getCandidateSupportedFormatsLocked() {
     std::vector<SupportedV4L2Format> outFmts;
+    // vector<uint32_t> vec;
+    // for(auto i: st.size()) {
+    //     vec.push_back(i);
+    // }
+    // int a = 27;
+    // auto it = *find(vec.begin(),vec.end(),a);
+
+    ALOGI("%s remote_camera value of frame1Width:%d value of frame1Height:%d", __FUNCTION__, mRemoteCfg.frames[0][0], mRemoteCfg.frames[0][1]);
+    ALOGI("%s remote_camera value of frame2Width:%d value of frame1Height:%d", __FUNCTION__, mRemoteCfg.frames[1][0], mRemoteCfg.frames[1][1]);
+    ALOGI("%s remote_camera value of frame3Width:%d value of frame1Height:%d", __FUNCTION__, mRemoteCfg.frames[2][0], mRemoteCfg.frames[2][1]);
     SupportedV4L2Format format {
-            .width = 1920,//mCaptureManager->getWidth(mCameraId),
-            .height = 1080,//mCaptureManager->getHeight(mCameraId),
+            .width = mRemoteCfg.frames[0][0],//mCaptureManager->getWidth(mCameraId), mCfg.frames[0][0]
+            .height = mRemoteCfg.frames[0][1],//mCaptureManager->getHeight(mCameraId),mCfg.frames[0][1]
             .fourcc = HAL_PIXEL_FORMAT_YCbCr_420_888,//V4L2_PIX_FMT_UYVY,//mCaptureManager->getFormat(mCameraId),
     };
     outFmts.push_back(format);
     SupportedV4L2Format hd {
-            .width = 1280,//mCaptureManager->getWidth(mCameraId),
-            .height = 720,//mCaptureManager->getHeight(mCameraId),
+            .width = mRemoteCfg.frames[1][0],//mCaptureManager->getWidth(mCameraId),
+            .height = mRemoteCfg.frames[1][1],//mCaptureManager->getHeight(mCameraId),
             .fourcc = HAL_PIXEL_FORMAT_YCbCr_420_888,//V4L2_PIX_FMT_UYVY,//mCaptureManager->getFormat(mCameraId),
     };
     outFmts.push_back(hd);
     SupportedV4L2Format vga {
-            .width = 640,//mCaptureManager->getWidth(mCameraId),
-            .height = 480,//mCaptureManager->getHeight(mCameraId),
+            .width = mRemoteCfg.frames[2][0],//mCaptureManager->getWidth(mCameraId),
+            .height = mRemoteCfg.frames[2][1],//mCaptureManager->getHeight(mCameraId),
             .fourcc = HAL_PIXEL_FORMAT_YCbCr_420_888,//V4L2_PIX_FMT_UYVY,//mCaptureManager->getFormat(mCameraId),
     };
     outFmts.push_back(vga);

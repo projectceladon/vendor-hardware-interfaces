@@ -26,6 +26,7 @@
 #include <aidl/android/hardware/graphics/common/BufferUsage.h>
 #include <aidl/android/hardware/graphics/common/PixelFormat.h>
 #include <tinyxml2.h>
+#include <vector>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -65,8 +66,9 @@ struct SizeHasher {
 
 struct ExternalCameraConfig {
     static const char* kDefaultCfgPath;
+    static const char* kRemoteCfgPath;
     static ExternalCameraConfig loadFromCfg(const char* cfgPath = kDefaultCfgPath);
-
+    static ExternalCameraConfig loadFromRemoteCfg(const char* cfgPath = kRemoteCfgPath);
     // CameraId base offset for numerical representation
     uint32_t cameraIdOffset;
 
@@ -85,6 +87,18 @@ struct ExternalCameraConfig {
     // Size of v4l2 buffer queue when streaming > kMaxVideoSize
     uint32_t numStillBuffers;
 
+    std::string pathCam;
+
+    int32_t defaultWidth;
+    int32_t defaultHeight;
+    std::vector<std::vector<int32_t>> frames;
+    int32_t streamId;
+    int32_t partialResult;
+    int32_t JpegBufSizeWidth;
+    int32_t JpegBufSizeHeight;
+    int32_t syncWaitTimeout;
+    int32_t maxThumbCodeSzWidth;
+    int32_t maxThumbCodeSzHeight;
     // Indication that the device connected supports depth output
     bool depthEnabled;
 
@@ -100,9 +114,9 @@ struct ExternalCameraConfig {
 
     // The value of android.sensor.orientation
     int32_t orientation;
-
-  private:
     ExternalCameraConfig();
+  private:
+   // ExternalCameraConfig();
     static bool updateFpsList(tinyxml2::XMLElement* fpsList, std::vector<FpsLimitation>& fpsLimits);
 };
 
