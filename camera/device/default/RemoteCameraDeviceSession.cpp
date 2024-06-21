@@ -231,12 +231,17 @@ void *RemoteDataRecvThreadFun(void *argv)
 
     return argv;
 }
+static int w = 0, h = 0;
+static int syncWait = 0;
+static int defaultWidth = 0, defaultHeight = 0;
+static int lWidth = 0, lHeight = 0;
 RemoteCameraDeviceSession::RemoteCameraDeviceSession(
         const std::shared_ptr<ICameraDeviceCallback>& callback,
         const std::vector<SupportedV4L2Format>& sortedFormats, const CroppingType& croppingType,
         const common::V1_0::helper::CameraMetadata& chars,
-        int vsockFd) : 
+        int vsockFd, const ExternalCameraConfig& config) : 
         mCallback(callback),
+        mRemoteCfg(config),
         mCameraCharacteristics(chars),
         mSupportedFormats(sortedFormats),
         mCroppingType(croppingType),
@@ -245,9 +250,16 @@ RemoteCameraDeviceSession::RemoteCameraDeviceSession(
         mMaxJpegResolution(getMaxJpegResolution()) {
         ALOGI("%s:  in RemoteCameraDeviceSession constructor", __FUNCTION__);    
         mFd = vsockFd;
+        w = mRemoteCfg.maxThumbCodeSzWidth;
+        h = mRemoteCfg.maxThumbCodeSzHeight;
+        syncWait = mRemoteCfg.syncWaitTimeout;
+        defaultWidth = mRemoteCfg.defaultWidth;
+        defaultHeight = mRemoteCfg.defaultHeight;
+        lWidth = mRemoteCfg.frames[2][0];
+        lHeight = mRemoteCfg.frames[2][1];
         pthread_create(&thread_id, NULL, RemoteDataRecvThreadFun, this);
     }
-
+    // TODO
 Size RemoteCameraDeviceSession::getMaxThumbResolution() const {
     return getMaxThumbnailResolution(mCameraCharacteristics);
 }
@@ -1116,7 +1128,7 @@ int RemoteCameraDeviceSession::configureV4l2StreamLocked(const SupportedV4L2Form
     for (int i = 0; i < kVirtEnqueueCount; i++) {
         std::shared_ptr<V4L2Frame> ptr = std::make_shared<V4L2Frame>(v4l2Fmt.width, v4l2Fmt.height, v4l2Fmt.fourcc, 0, 0, v4l2Fmt.width*v4l2Fmt.height*2, 0);
         if (ptr!=nullptr && ptr->Data() == nullptr) {
-            uint8_t* data = new uint8_t[DEFAULT_WIDTH *DEFAULT_HEIGHT*2];
+            uint8_t* data = new uint8_t[defaultWidth*defaultHeight*2];
             ptr->setData(data);
         }
         mEnqList.push_back(ptr);        
@@ -1672,8 +1684,9 @@ Status RemoteCameraDeviceSession::processCaptureRequestError(
     // Fill output buffers
     CaptureResult result;
     result.frameNumber = req->frameNumber;
-    result.partialResult = 1;
-    result.inputBuffer.streamId = -1;
+    ALOGI("%s: remote_camera partialResult 1:%d streamId 1:%d", __FUNCTION__, (int)mRemoteCfg.partialResult, (int)mRemoteCfg.streamId);
+    result.partialResult = mRemoteCfg.partialResult;//mRemoteCfg.partialResult; //hello
+    result.inputBuffer.streamId = mRemoteCfg.streamId;//mRemoteCfg.streamId;
     result.outputBuffers.resize(req->buffers.size());
     for (size_t i = 0; i < req->buffers.size(); i++) {
         result.outputBuffers[i].streamId = req->buffers[i].streamId;
@@ -1716,8 +1729,9 @@ Status RemoteCameraDeviceSession::processCaptureResult(std::shared_ptr<HalReques
     std::vector<CaptureResult> results(1);
     CaptureResult& result = results[0];
     result.frameNumber = req->frameNumber;
-    result.partialResult = 1;
-    result.inputBuffer.streamId = -1;
+    ALOGI("%s: remote_camera partialResult 3:%d streamId 3:%d", __FUNCTION__, (int)mRemoteCfg.partialResult, (int)mRemoteCfg.streamId);
+    result.partialResult = mRemoteCfg.partialResult;//hello
+    result.inputBuffer.streamId = mRemoteCfg.streamId;
     result.outputBuffers.resize(req->buffers.size());
     for (size_t i = 0; i < req->buffers.size(); i++) {
         result.outputBuffers[i].streamId = req->buffers[i].streamId;
@@ -1760,7 +1774,9 @@ Status RemoteCameraDeviceSession::processCaptureResult(std::shared_ptr<HalReques
 
 ssize_t RemoteCameraDeviceSession::getJpegBufferSize(int32_t width, int32_t height) const {
     // Constant from camera3.h
-    const ssize_t kMinJpegBufferSize = 256 * 1024 + sizeof(CameraBlob);
+    // mRemoteCfg.JpegBufSizeWidth
+    ALOGI("%s remote_camera value of jpegBufSizeWidth:%d jpegBufSizeHeight:%d", __FUNCTION__, mRemoteCfg.JpegBufSizeWidth, mRemoteCfg.JpegBufSizeHeight);
+    const ssize_t kMinJpegBufferSize = mRemoteCfg.JpegBufSizeWidth * mRemoteCfg.JpegBufSizeHeight + sizeof(CameraBlob); //hello 
     // Get max jpeg size (area-wise).
     if (mMaxJpegResolution.width == 0) {
         ALOGE("%s: No supported JPEG stream", __FUNCTION__);
@@ -2703,8 +2719,9 @@ bool RemoteCameraDeviceSession::OutputThread::threadLoop() {
     if (req->frameIn->mFourcc == HAL_PIXEL_FORMAT_YCbCr_420_888) {
         if(mYu12Frame->mWidth == 640 && mYu12Frame->mHeight == 480) {
             //scale to dest buffer
-            int srcWidth = DEFAULT_WIDTH;
-            int srcHeight = DEFAULT_HEIGHT;
+            ALOGI("%s remote_camera value of defaultWidth:%d value of defaultHeight:%d", __FUNCTION__, defaultWidth, defaultHeight);
+            int srcWidth = defaultWidth;
+            int srcHeight = defaultHeight;
             auto filtering = libyuv::kFilterNone;
             uint8_t* dst_buffer = (uint8_t*)mYu12FrameLayout.y;
             if(int ret = libyuv::I420Scale(inData, srcWidth, inData + (srcWidth * srcHeight), srcWidth /2 ,
@@ -2730,7 +2747,8 @@ bool RemoteCameraDeviceSession::OutputThread::threadLoop() {
     }
 
     ALOGV("%s processing new request", __FUNCTION__);
-    const int kSyncWaitTimeoutMs = 500;
+    ALOGI("%s remote_camera value of kSyncWaitTImeoutMs:%d", __FUNCTION__, syncWait);
+    const int kSyncWaitTimeoutMs = syncWait;// hello
     for (auto& halBuf : req->buffers) {
         if (*(halBuf.bufPtr) == nullptr) {
             ALOGW("%s: buffer for stream %d missing", __FUNCTION__, halBuf.streamId);

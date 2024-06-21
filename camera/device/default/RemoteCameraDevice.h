@@ -84,7 +84,7 @@ class RemoteCameraDevice : public BnCameraDevice {
     virtual std::shared_ptr<RemoteCameraDeviceSession> createSession(
             const std::shared_ptr<ICameraDeviceCallback>&,
             const std::vector<SupportedV4L2Format>& sortedFormats, const CroppingType& croppingType,
-            const common::V1_0::helper::CameraMetadata& chars, int vsockFd);
+            const common::V1_0::helper::CameraMetadata& chars, int vsockFd, const ExternalCameraConfig& config);
 
     bool isInitFailedLocked();
 
@@ -123,7 +123,7 @@ class RemoteCameraDevice : public BnCameraDevice {
                                 std::vector<SupportedV4L2Format>& outFmts);
 
     // Get candidate supported formats list of input cropping type.
-    static std::vector<SupportedV4L2Format> getCandidateSupportedFormatsLocked();
+    std::vector<SupportedV4L2Format> getCandidateSupportedFormatsLocked();
     // Trim supported format list by the cropping type. Also sort output formats by width/height
     static void trimSupportedFormats(CroppingType cropType,
                                      /*inout*/ std::vector<SupportedV4L2Format>* pFmts);
@@ -133,7 +133,7 @@ class RemoteCameraDevice : public BnCameraDevice {
     bool mInitFailed = false;
     std::string mCameraId;
     std::string mDevicePath;
-    const ExternalCameraConfig& mCfg;
+    const ExternalCameraConfig& mRemoteCfg;
     std::vector<SupportedV4L2Format> mSupportedFormats;
     
 
