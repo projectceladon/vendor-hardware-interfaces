@@ -49,7 +49,6 @@ class Sensors : public BnSensors, public ISensorsEventCallback {
 #if SENSOR_LIST_ENABLED
         AddSensor<AccelSensor>();
         AddSensor<GyroSensor>();
-        AddSensor<MagnetometerSensor>();
         AddSensor<LightSensor>();
         AddSensor<GravitySensor>();
         AddSensor<RotationVector>();
