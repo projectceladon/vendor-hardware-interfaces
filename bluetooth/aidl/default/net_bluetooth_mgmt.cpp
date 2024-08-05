@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "android.hardware.bluetooth.service.default"
+#define LOG_TAG "android.hardware.bluetooth.service.default.vbt"
 
 #include "net_bluetooth_mgmt.h"
 
@@ -23,6 +23,7 @@
 #include <poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 
 #include <cerrno>
 #include <cstdint>
@@ -73,6 +74,8 @@ struct mgmt_ev_read_index_list {
 
 #define RFKILL_OP_ADD 0
 #define RFKILL_OP_CHANGE 2
+
+#define IOCTL_HCIDEVDOWN _IOW('H', 202, int)
 
 struct rfkill_event {
   uint32_t idx;
@@ -249,8 +252,8 @@ int NetBluetoothMgmt::rfkill(int block) {
 int NetBluetoothMgmt::openHci(int hci_interface) {
   ALOGI("opening hci interface %d", hci_interface);
 
-  // Block Bluetooth.
-  rfkill(1);
+  // Unblock Bluetooth.
+  rfkill(0);
 
   // Wait for the HCI interface to complete initialization or to come online.
   hci_interface = waitHciDev(hci_interface);
@@ -272,6 +275,12 @@ int NetBluetoothMgmt::openHci(int hci_interface) {
       .hci_channel = HCI_CHANNEL_USER,
   };
 
+  /* Force interface down to use HCI user channel */
+  if (ioctl(fd, IOCTL_HCIDEVDOWN, hci_interface)) {
+    ALOGE("HCIDEVDOWN ioctl error: %s", strerror(errno));
+    return -1;
+  }
+
   // Bind the socket to the selected interface.
   if (bind(fd, (struct sockaddr*)&hci_addr, sizeof(hci_addr)) < 0) {
     ALOGE("unable to bind bluetooth user channel: %s", strerror(errno));
@@ -290,8 +299,8 @@ void NetBluetoothMgmt::closeHci() {
     bt_fd_ = -1;
   }
 
-  // Unblock Bluetooth.
-  rfkill(0);
+  // Block Bluetooth.
+  rfkill(1);
 }
 
 }  // namespace aidl::android::hardware::bluetooth::impl
