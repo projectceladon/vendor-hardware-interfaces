@@ -3,7 +3,7 @@ package {
 }
 
 cc_defaults {
-    name: "android.hardware.bluetooth-service-build-defaults",
+    name: "android.hardware.bluetooth-service-build-defaults-vbt",
     cflags: [
         "-Wall",
         "-Wextra",
@@ -19,15 +19,15 @@ cc_defaults {
     ],
     static_libs: [
         "android.hardware.bluetooth.async",
-        "android.hardware.bluetooth.hci",
+        "android.hardware.bluetooth.hci.vbt",
     ],
 }
 
 cc_library_static {
-    name: "libbluetoothhcihalimpl",
+    name: "libbluetoothhcihalimplvbt",
     vendor_available: true,
     host_supported: true,
-    defaults: ["android.hardware.bluetooth-service-build-defaults"],
+    defaults: ["android.hardware.bluetooth-service-build-defaults-vbt"],
     srcs: [
         "BluetoothHci.cpp",
         "net_bluetooth_mgmt.cpp",
@@ -35,12 +35,12 @@ cc_library_static {
 }
 
 cc_binary {
-    name: "android.hardware.bluetooth-service.default",
+    name: "android.hardware.bluetooth-service.default.vbt",
     relative_install_path: "hw",
-    init_rc: ["bluetooth-service-default.rc"],
-    vintf_fragments: [":manifest_android.hardware.bluetooth-service.default.xml"],
+    init_rc: ["bluetooth-service-default.vbt.rc"],
+    vintf_fragments: [":manifest_android.hardware.bluetooth-service.default.vbt.xml"],
     vendor: true,
-    defaults: ["android.hardware.bluetooth-service-build-defaults"],
+    defaults: ["android.hardware.bluetooth-service-build-defaults-vbt"],
     srcs: [
         "service.cpp",
     ],
@@ -53,12 +53,12 @@ cc_binary {
         "liblog",
     ],
     static_libs: [
-        "libbluetoothhcihalimpl",
+        "libbluetoothhcihalimplvbt",
     ],
 }
 
 cc_fuzz {
-    name: "android.hardware.bluetooth-service.default_fuzzer",
+    name: "android.hardware.bluetooth-service.default.vbt_fuzzer",
     host_supported: true,
     defaults: ["service_fuzzer_defaults"],
     srcs: [
@@ -66,9 +66,9 @@ cc_fuzz {
     ],
     static_libs: [
         "android.hardware.bluetooth.async",
-        "android.hardware.bluetooth.hci",
+        "android.hardware.bluetooth.hci.vbt",
         "android.hardware.bluetooth-V1-ndk",
-        "libbluetoothhcihalimpl",
+        "libbluetoothhcihalimplvbt",
         "liblog",
     ],
     fuzz_config: {
@@ -80,6 +80,6 @@ cc_fuzz {
 }
 
 filegroup {
-    name: "manifest_android.hardware.bluetooth-service.default.xml",
-    srcs: ["bluetooth-service-default.xml"],
+    name: "manifest_android.hardware.bluetooth-service.default.vbt.xml",
+    srcs: ["bluetooth-service-default.vbt.xml"],
 }
