@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "android.hardware.bluetooth.service.default"
+#define LOG_TAG "android.hardware.bluetooth.service.default.vbt"
 
 #include "BluetoothHci.h"
 
