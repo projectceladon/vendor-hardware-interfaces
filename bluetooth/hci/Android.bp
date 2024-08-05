@@ -1,9 +1,9 @@
 package {
-    default_applicable_licenses: ["hardware_interfaces_license"],
+    default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
 cc_library_static {
-    name: "android.hardware.bluetooth.hci",
+    name: "android.hardware.bluetooth.hci.vbt",
     vendor_available: true,
     host_supported: true,
     defaults: ["hidl_defaults"],
@@ -21,7 +21,7 @@ cc_library_static {
 }
 
 cc_test {
-    name: "bluetooth-vendor-interface-hci-test",
+    name: "bluetooth-vendor-interface-hci-vbt-test",
     host_supported: true,
     defaults: ["hidl_defaults"],
     srcs: [
@@ -35,7 +35,7 @@ cc_test {
     ],
     static_libs: [
         "android.hardware.bluetooth.async",
-        "android.hardware.bluetooth.hci",
+        "android.hardware.bluetooth.hci.vbt",
         "libgmock",
     ],
     sanitize: {
