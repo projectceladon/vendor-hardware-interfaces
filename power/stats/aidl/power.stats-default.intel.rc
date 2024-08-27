@@ -1,0 +1,5 @@
+service vendor.power.stats-default /apex/com.android.hardware.power/bin/hw/android.hardware.power.stats-service.intel
+    interface aidl android.hardware.power.stats.IPowerStats/default
+    class hal
+    user system
+    group system
