@@ -168,14 +168,14 @@ class FirmwareStartupTimer {
 bool VendorInterface::Initialize(
     InitializeCompleteCallback initialize_complete_cb,
     PacketReadCallback event_cb, PacketReadCallback acl_cb,
-    PacketReadCallback sco_cb) {
+    PacketReadCallback sco_cb, PacketReadCallback iso_cb) {
   if (g_vendor_interface) {
     ALOGE("%s: No previous Shutdown()?", __func__);
     return false;
   }
   g_vendor_interface = new VendorInterface();
   return g_vendor_interface->Open(initialize_complete_cb, event_cb, acl_cb,
-                                  sco_cb);
+                                  sco_cb, iso_cb);
 }
 
 void VendorInterface::Shutdown() {
@@ -191,7 +191,8 @@ VendorInterface* VendorInterface::get() { return g_vendor_interface; }
 bool VendorInterface::Open(InitializeCompleteCallback initialize_complete_cb,
                            PacketReadCallback event_cb,
                            PacketReadCallback acl_cb,
-                           PacketReadCallback sco_cb) {
+                           PacketReadCallback sco_cb,
+                           PacketReadCallback iso_cb) {
   initialize_complete_cb_ = initialize_complete_cb;
 
   // Initialize vendor interface
@@ -254,7 +255,7 @@ bool VendorInterface::Open(InitializeCompleteCallback initialize_complete_cb,
 
   if (fd_count == 1) {
     hci::H4Protocol* h4_hci =
-        new hci::H4Protocol(fd_list[0], intercept_events, acl_cb, sco_cb);
+        new hci::H4Protocol(fd_list[0], intercept_events, acl_cb, sco_cb, iso_cb);
     fd_watcher_.WatchFdForNonBlockingReads(
         fd_list[0], [h4_hci](int fd) { h4_hci->OnDataReady(fd); });
     hci_ = h4_hci;
@@ -264,8 +265,7 @@ bool VendorInterface::Open(InitializeCompleteCallback initialize_complete_cb,
     fd_watcher_.WatchFdForNonBlockingReads(
         fd_list[CH_EVT], [mct_hci](int fd) { mct_hci->OnEventDataReady(fd); });
     fd_watcher_.WatchFdForNonBlockingReads(
-        fd_list[CH_ACL_IN],
-        [mct_hci](int fd) { mct_hci->OnAclDataReady(fd); });
+        fd_list[CH_ACL_IN], [mct_hci](int fd) { mct_hci->OnAclDataReady(fd); });
     hci_ = mct_hci;
   }
 
@@ -301,6 +301,7 @@ void VendorInterface::Close() {
     lib_interface_->op(BT_VND_OP_POWER_CTRL, &power_state);
 
     lib_interface_->cleanup();
+    lib_interface_ = nullptr;
   }
 
   if (lib_handle_ != nullptr) {
