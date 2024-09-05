@@ -74,7 +74,7 @@ class RemoteCameraDeviceSession : public BnCameraDeviceSession, public OutputThr
                                 const std::vector<SupportedV4L2Format>& sortedFormats,
                                 const CroppingType& croppingType,
                                 const common::V1_0::helper::CameraMetadata& chars,
-                                int vsockFd);
+                                int vsockFd, const ExternalCameraConfig& config);
     ~RemoteCameraDeviceSession() override;
 #if 0
     class StreamThread : public Thread {
@@ -356,7 +356,7 @@ class RemoteCameraDeviceSession : public BnCameraDeviceSession, public OutputThr
 
     mutable Mutex mLock;  // Protect all private members except otherwise noted
     const std::shared_ptr<ICameraDeviceCallback> mCallback;
-    //const ExternalCameraConfig& mCfg;
+    const ExternalCameraConfig& mRemoteCfg;
     const common::V1_0::helper::CameraMetadata mCameraCharacteristics;
     const std::vector<SupportedV4L2Format> mSupportedFormats;
     const CroppingType mCroppingType;

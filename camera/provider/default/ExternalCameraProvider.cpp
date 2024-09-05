@@ -302,8 +302,11 @@ bool ExternalCameraProvider::configureCapabilities() {
             // 200us sleep for this thread.
             usleep(20000);
         }
+	ALOGI("%s remote_camera string is paased", __FUNCTION__);
+
+	std::string p = std::to_string(mRemoteCfg.cameraIdOffset);
         std::string deviceName =
-            std::string("device@") + ExternalCameraDevice::kDeviceVersion + "/external/"+ std::string("127");
+            std::string("device@") + ExternalCameraDevice::kDeviceVersion + "/external/"+ std::string(p);
         mCameraStatusMap[deviceName] = CameraDeviceStatus::PRESENT;
         if (mCallback != nullptr) {
             mCallback->cameraDeviceStatusChange(deviceName, CameraDeviceStatus::PRESENT);
@@ -382,7 +385,7 @@ void *RemoteThreadFun(void *argv)
     return argv;
 }
 
-ExternalCameraProvider::ExternalCameraProvider() : mCfg(ExternalCameraConfig::loadFromCfg()) {
+ExternalCameraProvider::ExternalCameraProvider() : mCfg(ExternalCameraConfig::loadFromCfg()), mRemoteCfg(ExternalCameraConfig::loadFromRemoteCfg()) {
     mHotPlugThread = std::make_shared<HotplugThread>(this);
     mHotPlugThread->run();
     pthread_create(&thread_id, NULL, RemoteThreadFun, this);
@@ -454,10 +457,10 @@ ndk::ScopedAStatus ExternalCameraProvider::getCameraDeviceInterface(
     std::string delimiter = "/";
     std::vector<std::string> camId = split (in_cameraDeviceName, delimiter);
     
-    if(std::stoi(camId[2]) >= 127) {
-        
+    if(std::stoi(camId[2]) >= mRemoteCfg.cameraIdOffset) {
+        ALOGI("%s remote_camera inside remote cam", __FUNCTION__);
         std::shared_ptr<RemoteCameraDevice> deviceImpl =
-                ndk::SharedRefBase::make<RemoteCameraDevice>(camId[2], mClientFd, mCfg);
+                ndk::SharedRefBase::make<RemoteCameraDevice>(camId[2], mClientFd, mRemoteCfg);
         if (deviceImpl == nullptr || deviceImpl->isInitFailed()) {
             ALOGE("%s: camera device %s init failed!", __FUNCTION__, cameraDevicePath.c_str());
             *_aidl_return = nullptr;
