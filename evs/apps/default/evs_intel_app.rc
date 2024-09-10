@@ -4,5 +4,5 @@ service evs_intel_app /system/bin/evs_intel_app
     user automotive_evs
     group automotive_evs
 
-on late-init
+on post-fs
     start evs_intel_app
