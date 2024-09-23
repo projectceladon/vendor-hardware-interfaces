@@ -15,25 +15,233 @@ sh_binary {
     owner: "widevine",
 }
 
+prebuilt_apex {
+    name: "com.google.android.widevine",
+    src: "com.google.android.widevine.apex",
+    installable:true,
+    vendor:true,
+    apex_name:"com.google.android.widevine",
+}
+
+soong_config_module_type {
+    name: "widevine_apex_defaults",
+    module_type: "apex_defaults",
+    config_namespace: "ANDROID",
+    bool_variables: ["TARGET_ENABLE_MEDIADRM_64"],
+    properties: ["compile_multilib"],
+}
+
+widevine_apex_defaults {
+    name: "com.google.android.widevine-defaults",
+    compile_multilib: "prefer32",
+    soong_config_variables: {
+        TARGET_ENABLE_MEDIADRM_64: {
+            compile_multilib: "first",
+        },
+    },
+    prebuilts: [
+        "com.google.android.widevine.xml",  // etc/vintf
+    ],
+    // TODO(b/274041915) remove updatable:false
+    updatable: false,
+    // TODO(b/268439003) We need an API to get apex version. Until then
+    // we'll read apex_manifest.pb to get the version. To label apex_manifest.pb
+    // as vendor_configs_file (which the apex can access), turn off force-label.
+    use_file_contexts_as_is: true,
+    // min_sdk_version: "34",
+    min_sdk_version: "UpsideDownCake",
+    vendor: true,
+}
+
+soong_config_module_type {
+    name: "widevine_key_apex_defaults",
+    module_type: "apex_defaults",
+    config_namespace: "widevine",
+    bool_variables: ["use_devkey"],
+    properties: ["key", "certificate"],
+}
+
+widevine_key_apex_defaults {
+    name: "com.google.android.widevine-key-defaults",
+    key: "com.google.android.widevine.key",
+    certificate: ":com.google.android.widevine.certificate",
+    soong_config_variables: {
+        use_devkey: {
+            key: "com_google_android_widevine-image.key",
+            certificate: ":com_google_android_widevine-container",
+        },
+    },
+}
+
 cc_prebuilt_binary {
     name: "android.hardware.drm-service.widevine",
+    owner: "widevine",
+    proprietary: true,
+    min_sdk_version: "UpsideDownCake",
+    relative_install_path: "hw",
     srcs: ["android.hardware.drm-service.widevine"],
     vendor: true,
-    relative_install_path: "hw",
-    init_rc: ["android.hardware.drm-service.widevine.rc"],
-    vintf_fragments: ["manifest_android.hardware.drm-service.widevine.xml"],
     required: [
         "libwvaidl",
     ],
-    check_elf_files: false,
+    shared_libs:[
+        "liblog",
+        "libbinder_ndk",
+    ],
 }
 
 cc_prebuilt_library_shared {
-    name: "libwvaidl",
-    srcs: ["libwvaidl.so"],
-    vendor: true,
-    check_elf_files: false,
+    name: "libcrypto",
+    srcs: ["libcrypto.so"],
+    vendor:true,
 }
+
+// cc_prebuilt_library_shared {
+//     name: "liblog",
+//     srcs: ["liblog.so"],
+//     vendor:true,
+// }
+
+apex {
+    name: "com.google.android.widevine",
+    manifest: "apex_manifest.json",
+    prebuilts: [
+        "com.google.android.widevine.rc",
+        "com.google.android.widevine.xml",  // etc/vintf
+    ],
+    defaults: [
+        "com.google.android.widevine-defaults",
+        "com.google.android.widevine-key-defaults",
+    ],
+    binaries: ["android.hardware.drm-service.widevine"],
+    file_contexts: "file_contexts",
+    native_shared_libs: [
+        "libcrypto",
+        // "liblog",
+    ],
+    
+    // min_sdk_version: "34",
+    // install sysconfig to allow the apex to be updatable
+    required: [
+        "allowlist_com.google.android.widevine.xml",
+    ],
+    // installable: false,
+    // apex_available: [
+    //     "//apex_available:platform",
+    // ],
+
+}
+
+apex_key {
+    name: "com.google.android.widevine.key",
+    public_key: "com.google.android.widevine.avbpubkey",
+    private_key: "com.google.android.widevine.pem",
+}
+
+android_app_certificate {
+    name: "com.google.android.widevine.certificate",
+    certificate: "com.google.android.widevine",
+}
+
+prebuilt_etc {
+    name: "com.google.android.widevine.rc",
+    src: "com.google.android.widevine.rc",
+    vendor:true,
+}
+
+prebuilt_etc {
+    name: "com.google.android.widevine.xml",
+    src: "com.google.android.widevine.xml",
+    sub_dir: "vintf",
+    installable: false,
+    vendor:true,
+}
+
+prebuilt_etc {
+    name: "allowlist_com.google.android.widevine.xml",
+    src: "allowlist_com.google.android.widevine.xml",
+    vendor: true,
+    sub_dir: "sysconfig",
+}
+
+// cc_prebuilt_binary {
+//     name: "android.hardware.drm-service.widevine",
+//     srcs: ["android.hardware.drm-service.widevine"],
+// }
+
+// apex {
+//     name: "com.google.android.widevine",
+//     manifest: "apex_manifest.json",
+//     prebuilts: [
+//         "com.google.android.widevine.rc",
+//         "com.google.android.widevine.xml",  // etc/vintf
+//     ],
+//     defaults: [
+//         "com.google.android.widevine-defaults",
+//         "com.google.android.widevine-key-defaults",
+//     ],
+//     binaries: ["android.hardware.drm-service.widevine"],
+//     file_contexts: "file_contexts",
+    
+//     native_shared_libs: ["ibcrypto"],
+//     // install sysconfig to allow the apex to be updatable
+//     required: [
+//         "allowlist_com.google.android.widevine.xml",
+//     ],
+//     key: "com.google.android.widevine.key",
+// }
+
+
+
+// apex_key {
+//     name: "com.google.android.widevine.key",
+//     public_key: "com.google.android.widevine.avbpubkey",
+//     private_key: "com.google.android.widevine.pem",
+// }
+
+// android_app_certificate {
+//     name: "com.google.android.widevine.certificate",
+//     certificate: "com.google.android.widevine",
+// }
+
+// prebuilt_etc {
+//     name: "com.google.android.widevine.rc",
+//     src: "com.google.android.widevine.rc",
+// }
+
+// prebuilt_etc {
+//     name: "com.google.android.widevine.xml",
+//     src: "com.google.android.widevine.xml",
+//     sub_dir: "vintf",
+//     installable: false,
+// }
+
+// prebuilt_etc {
+//     name: "allowlist_com.google.android.widevine.xml",
+//     src: "allowlist_com.google.android.widevine.xml",
+//     vendor: true,
+//     sub_dir: "sysconfig",
+// }
+
+//cc_prebuilt_binary {
+//    name: "android.hardware.drm-service.widevine",
+//    srcs: ["android.hardware.drm-service.widevine"],
+//    vendor: true,
+//    relative_install_path: "hw",
+//    init_rc: ["android.hardware.drm-service.widevine.rc"],
+//    vintf_fragments: ["manifest_android.hardware.drm-service.widevine.xml"],
+//    required: [
+//        "libwvaidl",
+//    ],
+//    check_elf_files: false,
+//}
+
+// cc_prebuilt_library_shared {
+//     name: "libwvaidl",
+//     srcs: ["libwvaidl.so"],
+//     vendor: true,
+//     check_elf_files: false,
+// }
 
 //cc_prebuilt_library_shared {
     //name: "libwvdrmengine",

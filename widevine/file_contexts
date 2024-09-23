@@ -1,0 +1,9 @@
+(/.*)?    u:object_r:vendor_file:s0
+/bin/hw/android\.hardware\.drm-service\.widevine    u:object_r:hal_drm_widevine_exec:s0
+/etc(/.*)?    u:object_r:vendor_configs_file:s0
+# TODO(b/268439003) Following two entries are typically handled by the build system.
+# We override it so that the Widevine APEX can access it to get the apex version.
+# When we have a proper API, we can delete these along with
+# use_file_contexts_as_is property in Android.bp
+/apex_manifest\.pb u:object_r:vendor_configs_file:s0
+/ u:object_r:system_file:s0

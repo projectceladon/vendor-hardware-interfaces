@@ -1,0 +1,7 @@
+{
+    "name": "com.google.android.widevine",
+    "version": 1,
+    "requireNativeLibs": [
+        "liboemcrypto.so"
+    ]
+}
