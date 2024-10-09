@@ -30,6 +30,8 @@ namespace implementation {
 static const uint8_t HCI_DATA_TYPE_COMMAND = 1;
 static const uint8_t HCI_DATA_TYPE_ACL = 2;
 static const uint8_t HCI_DATA_TYPE_SCO = 3;
+static const uint16_t HCI_WRITE_LOCAL_LOOPBACK_OPCODE = 0x1802;
+static bool isLocalLoopbackActive;
 
 class BluetoothDeathRecipient : public hidl_death_recipient {
  public:
@@ -53,6 +55,26 @@ class BluetoothDeathRecipient : public hidl_death_recipient {
 BluetoothHci::BluetoothHci()
     : death_recipient_(new BluetoothDeathRecipient(this)) {}
 
+void sendNOCPHciEvent(const hidl_vec<uint8_t>& packet,
+                   const ::android::sp<IBluetoothHciCallbacks>& cb) {
+  //send NOCP for every ACL packet received on loopback mode
+  if (packet.size() > 2) {
+    hidl_vec<uint8_t> nocp_packet (7);
+    nocp_packet[0] = 0x13;             //HCI NOCP opcode
+    nocp_packet[1] = 0x05;             //Length
+    nocp_packet[2] = 0x01;             //No of handles
+    nocp_packet[3] = packet[0];        //acl handle (2b)
+    nocp_packet[4] = packet[1] & 0x0F;
+    nocp_packet[5] = 0x01;             //No of cmpl pkts (2b)
+    nocp_packet[6] = 0x00;
+
+    auto hidl_status = cb->hciEventReceived(nocp_packet);
+    if (!hidl_status.isOk()) {
+      ALOGE("VendorInterface -> Unable to call hciEventReceived()");
+    }
+  }
+}
+
 Return<void> BluetoothHci::initialize(
     const ::android::sp<IBluetoothHciCallbacks>& cb) {
   ALOGI("BluetoothHci::initialize()");
@@ -63,6 +85,8 @@ Return<void> BluetoothHci::initialize(
 
   death_recipient_->setHasDied(false);
   cb->linkToDeath(death_recipient_, 0);
+
+  isLocalLoopbackActive = false;
 
   bool rc = VendorInterface::Initialize(
       [cb](bool status) {
@@ -80,6 +104,8 @@ Return<void> BluetoothHci::initialize(
       },
       [cb](const hidl_vec<uint8_t>& packet) {
         auto hidl_status = cb->aclDataReceived(packet);
+        if (isLocalLoopbackActive)
+          sendNOCPHciEvent(packet, cb);
         if (!hidl_status.isOk()) {
           ALOGE("VendorInterface -> Unable to call aclDataReceived()");
         }
@@ -110,11 +136,26 @@ Return<void> BluetoothHci::initialize(
 Return<void> BluetoothHci::close() {
   ALOGI("BluetoothHci::close()");
   unlink_cb_(death_recipient_);
+  isLocalLoopbackActive = false;
   VendorInterface::Shutdown();
   return Void();
 }
 
+void checkLocalLoopbackCmd(const hidl_vec<uint8_t>& command) {
+  if (command.size() > 3 &&
+        (((uint16_t)command[1] << 8) | command[0])
+	                 == HCI_WRITE_LOCAL_LOOPBACK_OPCODE) {
+    ALOGI("LocalLoopbackCmd");
+    if (command[3] == 0x01) {
+      isLocalLoopbackActive = true;
+    } else {
+      isLocalLoopbackActive = false;
+    }
+  }
+}
+
 Return<void> BluetoothHci::sendHciCommand(const hidl_vec<uint8_t>& command) {
+  checkLocalLoopbackCmd(command);
   sendDataToController(HCI_DATA_TYPE_COMMAND, command);
   return Void();
 }
