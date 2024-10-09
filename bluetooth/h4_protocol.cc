@@ -40,6 +40,7 @@
 #define INTEL_PID_9560 0x0aaa // 9460/9560 also know as Jefferson Peak (JfP)
 #define INTEL_PID_AX201 0x0026 // AX201 also know as Harrison Peak (HrP)
 #define INTEL_PID_AX211 0x0033 // AX211 also know as GarfieldPeak (Gfp)
+#define INTEL_PID_AX210 0x0032 // AX210 also know as TyphoonPeak (TyP2)
 
 #include <errno.h>
 #include <fcntl.h>
@@ -88,7 +89,8 @@ bool H4Protocol::IsIntelController(uint16_t vid, uint16_t pid) {
                                 (pid == INTEL_PID_9260)||
                                 (pid == INTEL_PID_9560)||
                                 (pid == INTEL_PID_AX201)||
-                                (pid == INTEL_PID_AX211)))
+                                (pid == INTEL_PID_AX211)||
+                                (pid == INTEL_PID_AX210)))
         return true;
     else
 	return false;
