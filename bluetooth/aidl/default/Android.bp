@@ -51,6 +51,7 @@ cc_binary {
         "libhidlbase",
         "libutils",
         "liblog",
+	"libusb",
     ],
     static_libs: [
         "libbluetoothhcihalimplvbt",
