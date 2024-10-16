@@ -38,6 +38,12 @@ class H4Protocol {
 
   void OnDataReady();
 
+  bool IsIntelController(uint16_t vid, uint16_t pid);
+
+  int GetUsbpath(void);
+
+  int SendHandle(void);
+
  protected:
   size_t OnPacketReady(const std::vector<uint8_t>& packet);
   void SendDataToPacketizer(uint8_t* buffer, size_t length);
@@ -45,6 +51,8 @@ class H4Protocol {
  private:
   int uart_fd_;
   bool disconnected_{false};
+  uint8_t sco_handle[2];
+  char dev_address[32];
 
   PacketReadCallback cmd_cb_;
   PacketReadCallback acl_cb_;
