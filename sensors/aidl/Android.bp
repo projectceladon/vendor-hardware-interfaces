@@ -1,0 +1,118 @@
+/*
+ * Copyright (C) 2021 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+soong_config_module_type {
+    name: "senPlugin_cc_default",
+    module_type: "cc_defaults",
+    config_namespace: "senPlugin",
+    bool_variables: ["SENSOR_LIST"],
+    properties: ["cflags", "srcs"],
+}
+
+senPlugin_cc_default {
+    name: "senPlugin_default",
+    soong_config_variables: {
+        SENSOR_LIST: { cflags: ["-DSENSOR_LIST_ENABLED","-DFEATURE_AUTOMOTIVE"]},
+    },
+}
+
+cc_library_static {
+    name: "libsensorsaidlimpl",
+    vendor: true,
+    shared_libs: [
+        "libbase",
+        "libfmq",
+        "libpower",
+        "libbinder_ndk",
+        "android.hardware.sensors-V2-ndk",
+    ],
+    export_include_dirs: ["include"],
+    srcs: [
+        "Sensors.cpp",
+        "Sensor.cpp",
+    ],
+    visibility: [
+        ":__subpackages__",
+        "//hardware/interfaces/tests/extension/sensors:__subpackages__",
+    ],
+}
+
+cc_library_static {
+     name: "intel.android.iiod.client@aidl-impel",
+     vendor: true,
+     local_include_dirs: ["libiio_client"],
+     srcs: [
+         "Sensor.cpp",
+         "iioClient.cpp",
+         "libiio_client/xml.c",
+         "libiio_client/buffer.c",
+         "libiio_client/context.c",
+         "libiio_client/iiod-client.c",
+         "libiio_client/lock.c",
+         "libiio_client/channel.c",
+         "libiio_client/backend.c",
+         "libiio_client/device.c",
+         "libiio_client/utilities.c",
+         "libiio_client/network.c",
+     ],
+    
+    shared_libs: [
+        "libbase",
+        "libfmq",
+        "libpower",
+        "libbinder_ndk",
+        "android.hardware.sensors-V2-ndk",
+        "liblog",
+        "libdl",
+        "libxml2",
+    ],
+    export_include_dirs: ["include"],
+    cflags: [
+         "-DLOG_TAG=\"SensorsHal_aidl\"",
+         "-Wall",
+         "-Wno-unused-variable",
+         "-Wno-unused-parameter",
+         "-Wno-unused-function",
+    ],
+}
+
+cc_binary {
+    name: "android.hardware.sensors@aidl-service.intel",
+    defaults: ["senPlugin_default"],
+    relative_install_path: "hw",
+    init_rc: ["sensors-aidl.rc"],
+    vintf_fragments: ["sensors-aidl.xml"],
+    vendor: true,
+    local_include_dirs: [
+        "libiio_client"
+    ],
+    shared_libs: [
+        "libbase",
+        "libbinder_ndk",
+        "libfmq",
+        "libpower",
+        "libcutils",
+        "liblog",
+        "libutils",
+        "android.hardware.sensors-V2-ndk",
+        "libxml2",
+    ],
+    static_libs: [
+        "libsensorsaidlimpl",
+        "intel.android.iiod.client@aidl-impel",
+    ],
+    srcs: ["main.cpp"],
+}
