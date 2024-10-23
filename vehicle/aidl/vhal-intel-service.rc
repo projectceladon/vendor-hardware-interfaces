@@ -1,0 +1,4 @@
+service vendor.vehicle-hal-aidl /vendor/bin/hw/android.hardware.automotive.vehicle@intel-aidl-service
+    class early_hal
+    user vehicle_network
+    group system inet
