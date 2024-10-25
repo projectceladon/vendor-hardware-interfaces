@@ -53,9 +53,10 @@ VirtVehicleHardware::VirtVehicleHardware() {
 VirtVehicleHardware::VirtVehicleHardware(
         bool inQemu,
         std::unique_ptr<MessageSender> socketComm,
-        std::unique_ptr<MessageSender> pipeComm) {
+        std::unique_ptr<MessageSender> pipeComm,
+        std::unique_ptr<MessageSender> vspiComm) {
     mInQemu = inQemu;
-    mEmulator = std::make_unique<VehicleVmcu>(std::move(socketComm), std::move(pipeComm), this);
+    mEmulator = std::make_unique<VehicleVmcu>(std::move(socketComm), std::move(pipeComm), std::move(vspiComm), this);
 }
 
 VehicleVmcu* VirtVehicleHardware::getEmulator() {
