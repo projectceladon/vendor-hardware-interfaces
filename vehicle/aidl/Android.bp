@@ -38,6 +38,7 @@ cc_binary {
         "VhalCommConn",
         "VhalPipeComm",
         "VhalSocketComm",
+        "VhalVSpiComm",
         "FakeVehicleHardware",
         "VehicleHalProtos",
         "android.hardware.automotive.vehicle.intel@2.0-libproto-native",
