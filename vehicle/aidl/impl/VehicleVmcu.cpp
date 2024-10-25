@@ -26,6 +26,7 @@
 #include <IVehicleHardware.h>
 #include <PipeComm.h>
 #include <SocketComm.h>
+#include <VSpiComm.h>
 
 namespace android {
 namespace hardware {
@@ -40,6 +41,8 @@ using ::aidl::android::hardware::automotive::vehicle::VehiclePropertyType;
 
 using ::android::hardware::automotive::vehicle::V2_0::impl::SocketComm;
 using ::android::hardware::automotive::vehicle::V2_0::impl::PipeComm;
+using ::android::hardware::automotive::vehicle::V2_0::impl::VSpiComm;
+
 using ::android::hardware::automotive::vehicle::V2_0::impl::MessageSender;
 
 VehicleVmcu::VehicleVmcu(VirtVehicleHardware* hal) : mHal(hal) {
@@ -52,19 +55,26 @@ VehicleVmcu::VehicleVmcu(VirtVehicleHardware* hal) : mHal(hal) {
         mPipeComm = std::make_unique<PipeComm>(this);
         mPipeComm->start();
     }
+
+
+    ALOGI("Starting VSpiComm");
+    mVSpiComm = std::make_unique<VSpiComm>(this);
+    mVSpiComm->start();
 }
 
 VehicleVmcu::VehicleVmcu(
         std::unique_ptr<MessageSender> socketComm,
         std::unique_ptr<MessageSender> pipeComm,
+        std::unique_ptr<MessageSender> vspiComm,
         VirtVehicleHardware* hal) : mHal(hal), mSocketComm(std::move(socketComm)),
-    mPipeComm(std::move(pipeComm)) {};
+    mPipeComm(std::move(pipeComm)), mVSpiComm(std::move(vspiComm)) {};
 
 VehicleVmcu::~VehicleVmcu() {
     mSocketComm->stop();
     if (mPipeComm) {
         mPipeComm->stop();
     }
+    mVSpiComm->stop();
 }
 
 /**
@@ -82,6 +92,7 @@ void VehicleVmcu::doSetValueFromClient(const VehiclePropValue& propValue) {
     if (mPipeComm) {
         mPipeComm->sendMessage(msg);
     }
+    mVSpiComm->sendMessage(msg);
 }
 
 void VehicleVmcu::doGetConfig(const VehicleVmcu::VmcuMessage& rxMsg,
