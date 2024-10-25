@@ -63,7 +63,8 @@ class VirtVehicleHardware final : public FakeVehicleHardware {
     VirtVehicleHardware(
         bool inQEMU,
         std::unique_ptr<V2_0::impl::MessageSender> socketComm,
-        std::unique_ptr<V2_0::impl::MessageSender> pipeComm);
+        std::unique_ptr<V2_0::impl::MessageSender> pipeComm,
+        std::unique_ptr<V2_0::impl::MessageSender> vspiComm);
 
     // For testing only.
     VehicleVmcu* getVmcu();
