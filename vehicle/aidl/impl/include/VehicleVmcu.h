@@ -42,6 +42,7 @@ class VehicleVmcu final : public V2_0::impl::MessageProcessor {
     VehicleVmcu(
         std::unique_ptr<V2_0::impl::MessageSender> socketComm,
         std::unique_ptr<V2_0::impl::MessageSender> pipeComm,
+        std::unique_ptr<V2_0::impl::MessageSender> vspiComm,
         VirtVehicleHardware* mHal);
     virtual ~VehicleVmcu();
 
@@ -70,6 +71,7 @@ class VehicleVmcu final : public V2_0::impl::MessageProcessor {
     VirtVehicleHardware* mHal;
     std::unique_ptr<V2_0::impl::MessageSender> mSocketComm;
     std::unique_ptr<V2_0::impl::MessageSender> mPipeComm;
+    std::unique_ptr<V2_0::impl::MessageSender> mVSpiComm;
 };
 
 }  // namespace fake
