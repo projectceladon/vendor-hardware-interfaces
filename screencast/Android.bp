@@ -37,7 +37,8 @@ android_app_import {
             apk: "DmBackendApp.apk",
         },
     },
-    presigned: true,
+    presigned: false,
+    certificate: "platform",
     apex_available: [
         "//apex_available:platform",
         "com.intel.dm_backend",
@@ -78,8 +79,8 @@ android_app_import {
             apk: "ScreenCastClient.apk",
         },
     },
-    presigned: true,
-
+    presigned: false,
+    certificate: "platform",
     apex_available: [
         "//apex_available:platform",
         "com.intel.screencastfrontclient",
@@ -98,6 +99,23 @@ cc_prebuilt_binary {
     shared_libs: [
         "libEGL",
         "libGLESv3",
+        "liblog",
+        "libz",
+        "libsync",
+        "libc",
+        "libandroid",
+    ],
+    check_elf_files: false,
+}
+sh_binary {
+    name: "open-node",
+    src: "open-node.sh",
+    filename_from_src: true,
+}
+cc_prebuilt_binary {
+    name: "probe-node",
+    srcs: ["probe-node"],
+    shared_libs: [
         "liblog",
         "libz",
         "libsync",
