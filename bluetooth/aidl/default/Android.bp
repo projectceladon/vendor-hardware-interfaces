@@ -1,0 +1,86 @@
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+cc_defaults {
+    name: "android.hardware.bluetooth-service-build-defaults-vbt",
+    cflags: [
+        "-Wall",
+        "-Wextra",
+    ],
+    shared_libs: [
+        "android.hardware.bluetooth-V1-ndk",
+        "libbase",
+        "libbinder_ndk",
+        "libcutils",
+        "libhidlbase",
+        "liblog",
+        "libutils",
+    ],
+    static_libs: [
+        "android.hardware.bluetooth.async",
+        "android.hardware.bluetooth.hci.vbt",
+    ],
+}
+
+cc_library_static {
+    name: "libbluetoothhcihalimplvbt",
+    vendor_available: true,
+    host_supported: true,
+    defaults: ["android.hardware.bluetooth-service-build-defaults-vbt"],
+    srcs: [
+        "BluetoothHci.cpp",
+        "net_bluetooth_mgmt.cpp",
+    ],
+}
+
+cc_binary {
+    name: "android.hardware.bluetooth-service.default.vbt",
+    relative_install_path: "hw",
+    init_rc: ["bluetooth-service-default.vbt.rc"],
+    vintf_fragments: [":manifest_android.hardware.bluetooth-service.default.vbt.xml"],
+    vendor: true,
+    defaults: ["android.hardware.bluetooth-service-build-defaults-vbt"],
+    srcs: [
+        "service.cpp",
+    ],
+    shared_libs: [
+        "android.hardware.bluetooth-V1-ndk",
+        "libbase",
+        "libbinder_ndk",
+        "libhidlbase",
+        "libutils",
+        "liblog",
+	"libusb",
+    ],
+    static_libs: [
+        "libbluetoothhcihalimplvbt",
+    ],
+}
+
+cc_fuzz {
+    name: "android.hardware.bluetooth-service.default.vbt_fuzzer",
+    host_supported: true,
+    defaults: ["service_fuzzer_defaults"],
+    srcs: [
+        "test/fuzzer.cpp",
+    ],
+    static_libs: [
+        "android.hardware.bluetooth.async",
+        "android.hardware.bluetooth.hci.vbt",
+        "android.hardware.bluetooth-V1-ndk",
+        "libbluetoothhcihalimplvbt",
+        "liblog",
+    ],
+    fuzz_config: {
+        componentid: 27441,
+        cc: [
+            "mylesgw@google.com",
+        ],
+    },
+}
+
+filegroup {
+    name: "manifest_android.hardware.bluetooth-service.default.vbt.xml",
+    srcs: ["bluetooth-service-default.vbt.xml"],
+}

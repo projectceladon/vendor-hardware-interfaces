@@ -1,0 +1,47 @@
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+cc_library_static {
+    name: "android.hardware.bluetooth.hci.vbt",
+    vendor_available: true,
+    host_supported: true,
+    defaults: ["hidl_defaults"],
+    srcs: [
+        "hci_packetizer.cc",
+        "h4_protocol.cc",
+    ],
+    export_include_dirs: ["."],
+    shared_libs: [
+        "libbase",
+        "libhidlbase",
+        "liblog",
+        "libutils",
+        "libusb",
+    ],
+}
+
+cc_test {
+    name: "bluetooth-vendor-interface-hci-vbt-test",
+    host_supported: true,
+    defaults: ["hidl_defaults"],
+    srcs: [
+        "test/h4_protocol_unittest.cc",
+    ],
+    shared_libs: [
+        "libbase",
+        "libhidlbase",
+        "liblog",
+        "libutils",
+    ],
+    static_libs: [
+        "android.hardware.bluetooth.async",
+        "android.hardware.bluetooth.hci.vbt",
+        "libgmock",
+    ],
+    sanitize: {
+        address: true,
+        cfi: true,
+    },
+    test_suites: ["general-tests"],
+}
