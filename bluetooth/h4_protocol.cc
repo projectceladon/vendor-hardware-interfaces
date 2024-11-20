@@ -15,7 +15,7 @@
 //
 
 #include "h4_protocol.h"
-
+#define LOG_NDEBUG 0
 #define LOG_TAG "android.hardware.bluetooth-hci-h4"
 
 #include <sys/ioctl.h>
@@ -126,8 +126,8 @@ int H4Protocol::GetUsbpath(void) {
         vid = descriptor.idVendor;
         pid = descriptor.idProduct;
         if (H4Protocol::IsIntelController(vid, pid)) {
-            snprintf(dev_address, sizeof(dev_address), "/dev/bus/usb/%03d/%03d",
-                                                       busnum, devnum);
+            snprintf(dev_address, sizeof(dev_address), "/dev/bus/usb/%03d/btusb",
+                                                       busnum);
             ALOGV("Value of BT device address = %s", dev_address);
             goto exit;
         }
