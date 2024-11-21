@@ -39,7 +39,7 @@ using ::android::base::Result;
 using ::ndk::ScopedAStatus;
 
 // Default camera output image resolution
-const std::array<int32_t, 2> kDefaultResolution = {WIDTH, HEIGHT};
+std::array<int32_t, 2> kDefaultResolution = {WIDTH, HEIGHT};
 
 // Arbitrary limit on number of graphics buffers allowed to be allocated
 // Safeguards against unreasonable resource consumption and provides a testable limit
@@ -899,7 +899,6 @@ std::shared_ptr<EvsV4lCamera> EvsV4lCamera::Create(
                     static_cast<uint32_t>(camInfo->streamConfigurations[streamId].format);
         }
     }
-
     if (!success) {
         // Create a camera object with the default resolution and format
         // , HAL_PIXEL_FORMAT_RGBA_8888.

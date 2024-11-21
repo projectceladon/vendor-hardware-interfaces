@@ -42,6 +42,8 @@
                      Logitech Webcam C930e device -->
                 <stream id='0' width='1280' height='720'  format='RGBA_8888' framerate='100'/>
                 <stream id='1' width='1920' height='1080'  format='RGBA_8888' framerate='100'/>
+                <stream id='2' width='1920' height='1536'  format='RGBA_8888' framerate='100'/>
+                <stream id='3' width='1632' height='1536'  format='RGBA_8888' framerate='100'/>
             </caps>
 
             <!-- list of parameters -->
@@ -95,6 +97,8 @@
                      Logitech Webcam C930e device -->
                 <stream id='0' width='1280' height='720'  format='RGBA_8888' framerate='30'/>
                 <stream id='1' width='1920' height='1080'  format='RGBA_8888' framerate='100'/>
+                <stream id='2' width='1920' height='1536'  format='RGBA_8888' framerate='100'/>
+                <stream id='3' width='1632' height='1536'  format='RGBA_8888' framerate='100'/>
             </caps>
 
             <!-- list of parameters -->
@@ -149,6 +153,8 @@
                 <!-- vivid webcam input support below three resolutions -->
                 <stream id='0' width='1280' height='720' format='RGBA_8888' framerate='30'/>
                 <stream id='1' width='1920' height='1080'  format='RGBA_8888' framerate='100'/>
+                <stream id='2' width='1920' height='1536'  format='RGBA_8888' framerate='100'/>
+                <stream id='3' width='1632' height='1536'  format='RGBA_8888' framerate='100'/>
             </caps>
 
             <!-- list of parameters -->
@@ -164,6 +170,8 @@
                 <!-- vivid webcam input support below three resolutions -->
                 <stream id='0' width='1280' height='720' format='RGBA_8888' framerate='30'/>
                 <stream id='1' width='1920' height='1080'  format='RGBA_8888' framerate='100'/>
+                <stream id='2' width='1920' height='1536'  format='RGBA_8888' framerate='100'/>
+                <stream id='3' width='1632' height='1536'  format='RGBA_8888' framerate='100'/>
             </caps>
 
             <!-- list of parameters -->
@@ -181,4 +189,3 @@
         </device>
     </display>
 </configuration>
-

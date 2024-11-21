@@ -146,6 +146,8 @@ bool RenderTopView::activate() {
     for (auto&& cam : mActiveCameras) {
     std::unique_ptr<Stream> targetCfg(new Stream());
     targetCfg->format = aidl::android::hardware::graphics::common::PixelFormat::RGBA_8888;
+    targetCfg->width = cam.info.width;
+    targetCfg->height = cam.info.height;
         cam.tex.reset(
                 createVideoTexture(mEnumerator, cam.info.cameraId.c_str(), std::move(targetCfg), sDisplay));
         if (!cam.tex) {

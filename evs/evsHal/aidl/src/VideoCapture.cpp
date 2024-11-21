@@ -85,7 +85,7 @@ bool VideoCapture::open(const char* deviceName, const int32_t width, const int32
     for (int i = 0; true; i++) {
         formatDescriptions.index = i;
         if (ioctl(mDeviceFd, VIDIOC_ENUM_FMT, &formatDescriptions) == 0) {
-            LOG(DEBUG) << "  " << std::setw(2) << i << ": " << formatDescriptions.description << " "
+            LOG(DEBUG) << "  icotl formats..." << std::setw(2) << i << ": " << formatDescriptions.description << " "
                        << std::hex << std::setw(8) << formatDescriptions.pixelformat << " "
                        << std::hex << formatDescriptions.flags;
             // auto detect USB camera resolution
@@ -106,9 +106,9 @@ bool VideoCapture::open(const char* deviceName, const int32_t width, const int32
                             (requestWidth * requestHeight) <
                                 frmsize.discrete.width * frmsize.discrete.height) {
                             if(frmsize.discrete.width == (uint32_t)width && frmsize.discrete.height == (uint32_t)height) {
-                                LOG(INFO) <<"Driver support this resolution ";
                                 requestWidth = frmsize.discrete.width;
                                 requestHeight = frmsize.discrete.height;
+                                LOG(INFO) <<"Driver support this resolution "<<requestWidth<<" "<<requestHeight;
                                 break;
                             }
                         }
@@ -142,12 +142,13 @@ bool VideoCapture::open(const char* deviceName, const int32_t width, const int32
         format.fmt.pix_mp.plane_fmt[0].bytesperline = width * 2;
         format.fmt.pix_mp.plane_fmt[0].sizeimage = width * height * 2;
     } else if (strcmp((char*)caps.driver, "virtio-camera") == 0) {
-+            LOG(INFO) << "Virtio-camera "<<requestWidth <<" "<<requestHeight;
+            LOG(INFO) << "Virtio-camera: "<<requestWidth <<" "<<requestHeight;
             format.type = V4L2_CAP_VIDEO_CAPTURE;
             format.fmt.pix.pixelformat = V4L2_PIX_FMT_UYVY;
             format.fmt.pix.width = requestWidth > 0 ? requestWidth : 1280;
             format.fmt.pix.height = requestHeight > 0 ? requestHeight : 960;
     } else {
+        LOG(INFO) << "Virtio-camera: "<<requestWidth <<" "<<requestHeight;
         format.type = V4L2_CAP_VIDEO_CAPTURE;
         format.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
         format.fmt.pix.width = requestWidth > 0 ? requestWidth : width;
