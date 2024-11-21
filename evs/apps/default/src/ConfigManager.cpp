@@ -19,6 +19,7 @@
 
 #include <assert.h>
 #include <math.h>
+#include <android-base/logging.h>
 
 #include <fstream>
 
@@ -131,6 +132,13 @@ bool ConfigManager::initialize(const char* configFileName) {
             Json::Value nameNode = node.get("cameraId", "MISSING");
             const char* cameraId = nameNode.asCString();
 
+             // Added new fields 'width' and 'height' in config.json
+            Json::Value camWidth = node.get("width", 0);
+            float width = camWidth.asFloat();
+            Json::Value camHeight = node.get("height", 0);
+            float height = camHeight.asFloat();
+            LOG(INFO) << "Adding resolution, Camera Resolution, width:"<<width<<" height:"<<height;
+
             Json::Value usageNode = node.get("function", "");
             const char* function = usageNode.asCString();
 
@@ -188,11 +196,12 @@ bool ConfigManager::initialize(const char* configFileName) {
             info.vflip = vflip;
             info.cameraId = cameraId;
             info.function = function;
+            info.width = width;
+            info.height = height;
 
             mCameras.emplace_back(info);
         }
     }
-
     // If we got this far, we were successful as long as we found all our child fields
     return complete;
 }

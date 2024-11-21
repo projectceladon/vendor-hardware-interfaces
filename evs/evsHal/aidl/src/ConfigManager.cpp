@@ -35,7 +35,7 @@ using ::tinyxml2::XMLElement;
 }  // namespace
 
 std::string_view ConfigManager::sConfigDefaultPath =
-        "/vendor/etc/automotive/evs/evs_aidl_hal_configuration.xml";
+        "/vendor/etc/automotive/evs/evs_aidl_hal_configuration_intel.xml";
 std::string_view ConfigManager::sConfigOverridePath =
         "/vendor/etc/automotive/evs/evs_configuration_override.xml";
 

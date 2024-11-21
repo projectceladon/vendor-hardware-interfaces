@@ -371,7 +371,6 @@ ScopedAStatus EvsEnumerator::getStreamList(const CameraDesc& desc,
 
 ScopedAStatus EvsEnumerator::openCamera(const std::string& id, const Stream& cfg,
                                         std::shared_ptr<IEvsCamera>* obj) {
-    LOG(DEBUG) << __FUNCTION__;
     if (!checkPermission()) {
         return ScopedAStatus::fromServiceSpecificError(
                 static_cast<int>(EvsResult::PERMISSION_DENIED));
