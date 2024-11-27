@@ -66,12 +66,21 @@ class Thermal : public BnThermal {
     ndk::ScopedAStatus unregisterThermalChangedCallback(
             const std::shared_ptr<IThermalChangedCallback>& in_callback) override;
 
+    ndk::ScopedAStatus registerCoolingDeviceChangedCallbackWithType(
+            const std::shared_ptr<ICoolingDeviceChangedCallback>& in_callback,
+            CoolingType in_type) override;
+
+    ndk::ScopedAStatus unregisterCoolingDeviceChangedCallback(
+            const std::shared_ptr<ICoolingDeviceChangedCallback>& in_callback) override;
   private:
     std::mutex thermal_callback_mutex_;
     std::vector<std::shared_ptr<IThermalChangedCallback>> thermal_callbacks_;
     std::thread mCheckThread;
     int mNumCpu;
     std::vector<CallbackSetting> callbacks_;
+    std::mutex cdev_callback_mutex_;
+	std::vector<std::shared_ptr<ICoolingDeviceChangedCallback>> cdev_callbacks_;
+
 };
 
 }  // namespace example
