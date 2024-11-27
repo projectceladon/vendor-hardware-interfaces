@@ -33,21 +33,10 @@
 
 package android.hardware.thermal;
 /* @hide */
-@Backing(type="int") @VintfStability
-enum CoolingType {
-  FAN,
-  BATTERY,
-  CPU,
-  GPU,
-  MODEM,
-  NPU,
-  COMPONENT,
-  TPU,
-  POWER_AMPLIFIER,
-  DISPLAY,
-  SPEAKER,
-  WIFI,
-  CAMERA,
-  FLASHLIGHT,
-  USB_PORT,
+@JavaDerive(toString=true) @VintfStability
+parcelable TemperatureThreshold {
+  android.hardware.thermal.TemperatureType type;
+  String name;
+  float[] hotThrottlingThresholds;
+  float[] coldThrottlingThresholds;
 }

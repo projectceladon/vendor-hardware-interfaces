@@ -1,4 +1,5 @@
-service vendor.thermal-aidl-intel /vendor/bin/hw/android.hardware.thermal@aidl-service.intel
+service vendor.thermal-aidl-intel /apex/com.android.hardware.thermal.intel/bin/hw/android.hardware.thermal@aidl-service.intel
     class hal
     user nobody
     group system
+
