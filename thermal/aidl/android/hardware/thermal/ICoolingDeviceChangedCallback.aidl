@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 The Android Open Source Project
+ * Copyright (C) 2023 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,26 +16,21 @@
 
 package android.hardware.thermal;
 
+import android.hardware.thermal.CoolingDevice;
+import android.hardware.thermal.Temperature;
+
 /**
- * Device cooling device types
+ * ICoolingDeviceChangedCallback send cooling device change notification to clients.
  * @hide
  */
 @VintfStability
-@Backing(type="int")
-enum CoolingType {
-    FAN,
-    BATTERY,
-    CPU,
-    GPU,
-    MODEM,
-    NPU,
-    COMPONENT,
-    TPU,
-    POWER_AMPLIFIER,
-    DISPLAY,
-    SPEAKER,
-    WIFI,
-    CAMERA,
-    FLASHLIGHT,
-    USB_PORT,
+interface ICoolingDeviceChangedCallback {
+    /**
+     * Send a cooling device change event to all ThermalHAL
+     * cooling device event listeners.
+     *
+     * @param cooling_device The cooling device information associated with the
+     *     change event.
+     */
+    oneway void notifyCoolingDeviceChanged(in CoolingDevice coolingDevice);
 }

@@ -34,20 +34,12 @@
 package android.hardware.thermal;
 /* @hide */
 @Backing(type="int") @VintfStability
-enum CoolingType {
-  FAN,
-  BATTERY,
-  CPU,
-  GPU,
-  MODEM,
-  NPU,
-  COMPONENT,
-  TPU,
-  POWER_AMPLIFIER,
-  DISPLAY,
-  SPEAKER,
-  WIFI,
-  CAMERA,
-  FLASHLIGHT,
-  USB_PORT,
+enum ThrottlingSeverity {
+  NONE = 0,
+  LIGHT,
+  MODERATE,
+  SEVERE,
+  CRITICAL,
+  EMERGENCY,
+  SHUTDOWN,
 }

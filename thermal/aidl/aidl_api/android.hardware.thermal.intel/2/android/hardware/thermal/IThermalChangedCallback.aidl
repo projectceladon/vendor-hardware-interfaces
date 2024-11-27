@@ -33,21 +33,7 @@
 
 package android.hardware.thermal;
 /* @hide */
-@Backing(type="int") @VintfStability
-enum CoolingType {
-  FAN,
-  BATTERY,
-  CPU,
-  GPU,
-  MODEM,
-  NPU,
-  COMPONENT,
-  TPU,
-  POWER_AMPLIFIER,
-  DISPLAY,
-  SPEAKER,
-  WIFI,
-  CAMERA,
-  FLASHLIGHT,
-  USB_PORT,
+@VintfStability
+interface IThermalChangedCallback {
+  oneway void notifyThrottling(in android.hardware.thermal.Temperature temperature);
 }
