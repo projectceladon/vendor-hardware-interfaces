@@ -201,6 +201,34 @@ void H4Protocol::OnPacketReady() {
   hci_packet_type_ = HCI_PACKET_TYPE_UNKNOWN;
 }
 
+/* This function checks whether BTUSB modules
+ * is active or not, before throwing the FATAL error
+ * because malformed packet from controller.
+ */
+static bool checkIsBtusbLoaded() {
+  FILE *fp;
+  char buff[256];
+  bool isBtusbPresent = false;
+
+  ALOGD("%s", __func__);
+
+  fp = fopen("/proc/modules", "r");
+  if (fp == NULL) {
+    ALOGE("Unable to open /proc/modules");
+    return true;
+  }
+
+  while (fgets(buff, sizeof(buff), fp) != NULL) {
+    if (strstr(buff, "btusb ") && strstr(buff, "live")) {
+        ALOGD("btusb module is live");
+        isBtusbPresent = true;
+        break;
+    }
+  }
+
+  fclose(fp);
+  return isBtusbPresent;
+}
 
 typedef struct
 {
@@ -243,8 +271,10 @@ void H4Protocol::OnDataReady(int fd) {
         if (hci_packet_type_ != HCI_PACKET_TYPE_ACL_DATA &&
             hci_packet_type_ != HCI_PACKET_TYPE_SCO_DATA &&
             hci_packet_type_ != HCI_PACKET_TYPE_EVENT) {
-          LOG_ALWAYS_FATAL("%s: Unimplemented packet type %d", __func__,
-                           static_cast<int>(hci_packet_type_));
+            if (checkIsBtusbLoaded()) {
+                LOG_ALWAYS_FATAL("%s: Unimplemented packet type %d", __func__,
+                                static_cast<int>(hci_packet_type_));
+            }
         } else {
             if(tpkt.data()[1] == HCI_COMMAND_COMPLETE_EVT) {
                 ALOGD("%s Command complete event ncmds = %d",
