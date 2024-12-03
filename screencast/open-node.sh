@@ -2,12 +2,12 @@
 
 value=$(getprop | grep 'ro.boot.vm' | awk -F'[][]' '{print $4}')
 
-if [ "$value" == "1" ]; then
-    echo "VM1"
+if [ "$value" == "3" ]; then
+    echo "VM3"
     echo "1af4 1110 8086 202" > /sys/bus/pci/drivers/ivshm_ivshmem/new_id
     chmod 666 /dev/ivshm0*
-elif [ "$value" == "2" ]; then
-    echo "VM2"
+elif [ "$value" == "1" ]; then
+    echo "VM1"
     echo "1af4 1110 8086 200" > /sys/bus/pci/drivers/ivshm_ivshmem/new_id
     chmod 666 /dev/ivshm0*
     echo "1af4 1110 8086 201" > /sys/bus/pci/drivers/ivshm_ivshmem/new_id
