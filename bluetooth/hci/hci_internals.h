@@ -52,4 +52,6 @@ static constexpr size_t kIsoLengthOffset = 2;
 
 static constexpr size_t kMaxHeaderSize = kAclHeaderSize;
 
+static const uint16_t HCI_WRITE_LOCAL_LOOPBACK_OPCODE = 0x1802;
+
 }  // namespace android::hardware::bluetooth::hci
