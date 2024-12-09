@@ -35,6 +35,8 @@ public:
         float vfov = 0;      // radians
         bool hflip = false;  // boolean to flip the preview horizontally
         bool vflip = false;  // boolean to flip the preview vertically
+        float width = 0;
+        float height = 0;
     };
 
     struct DisplayInfo {

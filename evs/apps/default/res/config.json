@@ -37,7 +37,9 @@
       "hfov" : 115,
       "vfov" : 80,
       "hflip" : true,
-      "vflip" : false
+      "vflip" : false,
+      "width": 1280,
+      "height": 720
     },
     {
       "cameraId" : "/dev/video1",
@@ -51,7 +53,9 @@
       "hfov" : 115,
       "vfov" : 80,
       "hflip" : false,
-      "vflip" : false
+      "vflip" : false,
+      "width": 1920,
+      "height": 1080
     },
     {
       "cameraId" : "/dev/video2",
@@ -65,7 +69,9 @@
       "hfov" : 60,
       "vfov" : 62,
       "hflip" : false,
-      "vflip" : false
+      "vflip" : false,
+      "width": 1920,
+      "height": 1536
     },
     {
       "cameraId" : "/dev/video3",
@@ -79,7 +85,9 @@
       "hfov" : 60,
       "vfov" : 62,
       "hflip" : false,
-      "vflip" : false
+      "vflip" : false,
+      "width": 1632,
+      "height": 1536
     }
   ]
 }
