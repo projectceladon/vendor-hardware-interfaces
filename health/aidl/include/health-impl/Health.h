@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <optional>
 
@@ -61,7 +62,7 @@ class Health : public BnHealth, public HalHealthLoopCallback {
     ndk::ScopedAStatus getCurrentAverageMicroamps(int32_t* out) override;
     ndk::ScopedAStatus getCapacity(int32_t* out) override;
     ndk::ScopedAStatus getChargeStatus(BatteryStatus* out) override;
-    ndk::ScopedAStatus setChargingPolicy(BatteryChargingPolicy out) override;
+    ndk::ScopedAStatus setChargingPolicy(BatteryChargingPolicy in_value) override;
     ndk::ScopedAStatus getChargingPolicy(BatteryChargingPolicy* out) override;
     ndk::ScopedAStatus getBatteryHealthData(BatteryHealthData* out) override;
 
@@ -111,7 +112,7 @@ class Health : public BnHealth, public HalHealthLoopCallback {
     ndk::ScopedAIBinder_DeathRecipient death_recipient_;
     int binder_fd_ = -1;
     std::mutex callbacks_lock_;
-    std::vector<std::unique_ptr<LinkedCallback>> callbacks_;
+    std::map<LinkedCallback*, std::shared_ptr<IHealthInfoCallback>> callbacks_;
 };
 
 }  // namespace aidl::android::hardware::health
