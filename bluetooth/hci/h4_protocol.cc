@@ -51,6 +51,16 @@
 
 #include "log/log.h"
 
+
+typedef struct
+{
+    uint8_t         type;
+    uint8_t         event;
+    uint8_t         len;
+    uint8_t         offset;
+    uint16_t        layer_specific;
+} BT_EVENT_HDR;
+
 namespace android::hardware::bluetooth::hci {
 
 H4Protocol::H4Protocol(int fd, PacketReadCallback cmd_cb,
@@ -227,6 +237,15 @@ void H4Protocol::SendDataToPacketizer(uint8_t* buffer, size_t length) {
           static_cast<PacketType>(input_buffer.data()[buffer_offset]);
       buffer_offset += 1;
     } else {
+      /* Disable Enhance setup synchronous connections*/
+      if (input_buffer[1] == HCI_COMMAND_COMPLETE_EVT) {
+        ALOGV("%s Command complete event ncmds = %d",
+                                     __func__, input_buffer[3]);
+        BT_EVENT_HDR* hdr  = (BT_EVENT_HDR*)(input_buffer.data());
+        if( hdr->layer_specific == HCI_READ_LOCAL_SUPPORTED_CMDS)
+          input_buffer[36] &= ~((uint8_t)0x1 << 3);
+      }
+
       bool packet_ready = hci_packetizer_.OnDataReady(
           hci_packet_type_, input_buffer, &buffer_offset);
       if (packet_ready) {
