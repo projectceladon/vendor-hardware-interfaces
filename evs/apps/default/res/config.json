@@ -71,7 +71,7 @@
       "hflip" : false,
       "vflip" : false,
       "width": 1920,
-      "height": 1536
+      "height": 1080
     },
     {
       "cameraId" : "/dev/video3",
