@@ -1,0 +1,27 @@
+Running product configuration...
+23:06:16 Build sandboxing disabled due to nsjail error.
+basename: Needs 1 argument (see "basename --help")
+============================================
+PLATFORM_VERSION_CODENAME=REL
+PLATFORM_VERSION=14
+PRODUCT_INCLUDE_TAGS=com.android.mainline
+TARGET_PRODUCT=base_aaos
+TARGET_BUILD_VARIANT=userdebug
+TARGET_ARCH=x86_64
+TARGET_ARCH_VARIANT=silvermont
+TARGET_CPU_VARIANT=generic
+HOST_OS=linux
+HOST_OS_EXTRA=Linux-6.8.0-45-generic-x86_64-Ubuntu-24.04.1-LTS
+HOST_CROSS_OS=windows
+BUILD_ID=UQ1A.240205.004.B1
+OUT_DIR=out
+============================================
+[100% 1/1] Creating Bazel symlink forest
+No need to regenerate ninja file
+No need to regenerate ninja file
+No need to regenerate ninja file
+Starting ninja...
+[100% 2/2] Copy init script: out/target/product/base_aaos/vendor/etc/init/gnss-intel.rc
+
+[0;32m#### build completed successfully (11 seconds) ####[00m
+
