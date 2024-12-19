@@ -70,8 +70,8 @@ ScopedAStatus Gnss::setCallback(const std::shared_ptr<IGnssCallback>& callback) 
     }
 
     IGnssCallback::GnssSystemInfo systemInfo = {
-            .yearOfHw = 2022,
-            .name = "Google, Cuttlefish, AIDL v3",
+            .yearOfHw = 2023,
+            .name = "CodingCopper, AIDL v3",
     };
     status = sGnssCallback->gnssSetSystemInfoCb(systemInfo);
     if (!status.isOk()) {
