@@ -28,6 +28,9 @@ namespace android {
 namespace hardware {
 namespace gnss {
 namespace common {
+
+using namespace std;
+
 class DeviceFileReader {
   public:
     static DeviceFileReader& Instance() {
@@ -41,7 +44,8 @@ class DeviceFileReader {
   private:
     DeviceFileReader();
     ~DeviceFileReader();
-	int initializeGnssDevice();
+    int initializeGnssDevice();
+    bool findGnssDevice();
     std::unordered_map<std::string, std::string> data_;
     std::string s_buffer_;
     std::mutex mMutex;
