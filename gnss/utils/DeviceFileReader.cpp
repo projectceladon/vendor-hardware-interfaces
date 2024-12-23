@@ -26,7 +26,7 @@ void DeviceFileReader::getDataFromDeviceFile(const std::string& command, int mMi
     int gnss_fd, epoll_fd;
 
     if (gnss_fix_fd_ == -1 && initializeGnssDevice() < 0) {
-        ALOGE("Failed to initialize the gnss device");
+        ALOGV("Failed to initialize the gnss device");
         return;
     }
 
@@ -42,7 +42,6 @@ void DeviceFileReader::getDataFromDeviceFile(const std::string& command, int mMi
 
     // Create an epoll instance.
     if ((epoll_fd = epoll_create1(EPOLL_CLOEXEC)) < 0) {
-        close(gnss_fd);
         return;
     }
 
@@ -52,13 +51,19 @@ void DeviceFileReader::getDataFromDeviceFile(const std::string& command, int mMi
     ev.data.fd = gnss_fd;
     ev.events = EPOLLIN;
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, gnss_fd, &ev) == -1) {
+        ALOGE("gnss epoll_ctl failed");
         close(epoll_fd);
+        close(gnss_fd);
+        gnss_fix_fd_ = -1;
         return;
     }
 
     // Wait for device file event.
     if (epoll_wait(epoll_fd, events, 1, mMinIntervalMs) == -1) {
+        ALOGE("gnss epoll_wait failed");
         close(epoll_fd);
+        close(gnss_fd);
+        gnss_fix_fd_ = -1;
         return;
     }
 
@@ -102,13 +107,69 @@ std::string DeviceFileReader::getGnssRawMeasurementData() {
     return data_[CMD_GET_RAWMEASUREMENT];
 }
 
-int DeviceFileReader::initializeGnssDevice() {
-    std::string deviceFilePath = "";
-    deviceFilePath = ReplayUtils::getFixedLocationPath();
+bool DeviceFileReader::findGnssDevice() {
+    string gnssDevBase = "/dev/ttyUSB";
+    string gnssDev;
+    struct termios tty;
+    char buf[128];
+    int bytes_read = -1;
+    for (int i = 0; i < DEVICE_COUNT; i++) {
+        gnssDev = gnssDevBase + to_string(i);
+        if ((gnss_fix_fd_ = open(gnssDev.c_str(),
+                  O_RDWR | O_NOCTTY)) == -1) {
+            ALOGV("GNSS open %s failed", gnssDev.c_str());
+            continue;
+        }
+        memset(buf, 0, sizeof(buf));
 
-    ALOGD("GPS device %s", deviceFilePath.c_str());
-    if ((gnss_fix_fd_ = open(deviceFilePath.c_str(), O_RDWR | O_NOCTTY)) == -1) {
-        ALOGE("Open gnss device failed");
+        if (tcgetattr(gnss_fix_fd_, &tty) != 0) {
+            ALOGE("Error getting GNSS terminal attributes");
+            close(gnss_fix_fd_);
+            gnss_fix_fd_ = -1;
+            continue;
+        }
+
+        tty.c_cc[VMIN] = 128;
+        tty.c_cc[VTIME] = 10;
+
+        if (tcsetattr(gnss_fix_fd_, TCSANOW, &tty) != 0) {
+            ALOGE("Error setting GNSS terminal attributes");
+            close(gnss_fix_fd_);
+            gnss_fix_fd_ = -1;
+            continue;
+        }
+
+        bytes_read = read(gnss_fix_fd_, buf, sizeof(buf));
+        if (bytes_read <= 0) {
+            ALOGE("Read gnss data failed, invalid gnss device?");
+            close(gnss_fix_fd_);
+            gnss_fix_fd_ = -1;
+            continue;
+        }
+
+        if (strstr(buf, "$GP") != nullptr ||
+                strstr(buf, "$GN") != nullptr ||
+                strstr(buf, "$BD") != nullptr) {
+            ALOGD("Find the GNSS device: %s", gnssDev.c_str());
+            close(gnss_fix_fd_);
+            if ((gnss_fix_fd_ = open(gnssDev.c_str(),
+                      O_RDWR | O_NOCTTY)) == -1) {
+                ALOGE("Reopen the GNSS device with blocking mode failed");
+                return false;
+            }
+            return true;
+        }
+
+        close(gnss_fix_fd_);
+        gnss_fix_fd_ = -1;
+    }
+
+    return false;
+}
+
+int DeviceFileReader::initializeGnssDevice() {
+    if (!findGnssDevice()) {
+        ALOGV("Find gnss device failed");
         return -1;
     }
 

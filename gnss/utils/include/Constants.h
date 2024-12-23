@@ -41,6 +41,7 @@ constexpr int INPUT_BUFFER_SIZE = 1024;
 constexpr char CMD_GET_LOCATION[] = "CMD_GET_LOCATION";
 constexpr char CMD_GET_RAWMEASUREMENT[] = "CMD_GET_RAWMEASUREMENT";
 constexpr char CMD_SET_CC_2HZ[] = "$PCAS02,500*1A\r\n";
+constexpr char CMD_SET_CC_1HZ[] = "$PCAS02,1000*2E\r\n";
 constexpr char CMD_SET_CC_GGARMC[] = "$PCAS03,1,0,0,0,1,0,0,0,0,0,,,0,0*02\r\n";
 constexpr char CMD_SET_CC_BR115200[] = "$PCAS01,5*19\r\n";
 constexpr char CMD_SET_CC_BR9600[] = "$PCAS01,1*1D\r\n";
@@ -53,6 +54,7 @@ constexpr char GNRMC_RECORD_TAG[] = "$GNRMC";
 constexpr double TIMESTAMP_EPSILON = 0.001;
 constexpr int MIN_COL_NUM = 13;
 constexpr int BYTES_PER_SES = 1024;
+constexpr int DEVICE_COUNT = 20;
 
 }  // namespace common
 }  // namespace gnss
