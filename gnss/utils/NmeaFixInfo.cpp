@@ -208,7 +208,9 @@ NmeaFixInfo& NmeaFixInfo::operator=(const NmeaFixInfo& rhs) {
  */
 std::unique_ptr<V2_0::GnssLocation> NmeaFixInfo::getLocationFromInputStr(
         const std::string& inputStr) {
-	ALOGV("getLocationFromInputStr %s", inputStr.c_str());
+    ALOGV("getLocationFromInputStr %s", inputStr.c_str());
+    if (inputStr.empty()) return nullptr;
+
     std::vector<std::string> nmeaRecords;
     splitStr(inputStr, LINE_SEPARATOR, nmeaRecords, true);
     NmeaFixInfo nmeaFixInfo;
