@@ -96,9 +96,6 @@ ScopedAStatus Gnss::setCallback(const std::shared_ptr<IGnssCallback>& callback) 
 }
 
 std::unique_ptr<GnssLocation> Gnss::getLocationFromHW() {
-    if (!::android::hardware::gnss::common::ReplayUtils::hasFixedLocationDeviceFile()) {
-        return nullptr;
-    }
     std::string inputStr =
 			::android::hardware::gnss::common::DeviceFileReader::Instance().getLocationData();
     ALOGD("getLocationFromHW()");
@@ -136,14 +133,17 @@ ScopedAStatus Gnss::start() {
                 ALOGV("reportLocation real %s", (*currentLocation).toString().c_str());
                 mLastLocation = *currentLocation;
                 mHasLastLocation = true;
+                mMinIntervalMs = 1000;
                 this->reportLocation(*currentLocation);
             } else if (mHasLastLocation) {
                 ALOGV("reportLocation lastlocation %s", mLastLocation.toString().c_str());
                 mLastLocation.elapsedRealtime.timestampNs = ::android::elapsedRealtimeNano();
+                mMinIntervalMs = 3000;
                 this->reportLocation(mLastLocation);
             } else {
                 const auto location = Utils::getMockLocation();
                 ALOGV("reportLocation mock %s",  location.toString().c_str());
+                mMinIntervalMs = 3000;
                 this->reportLocation(location);
             }
         } while (mIsActive && mThreadBlocker.wait_for(std::chrono::milliseconds(mMinIntervalMs)));
