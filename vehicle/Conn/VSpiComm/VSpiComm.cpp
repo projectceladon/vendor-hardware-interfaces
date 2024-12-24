@@ -35,7 +35,7 @@ namespace V2_0 {
 namespace impl {
 
 VSpiComm::VSpiComm(MessageProcessor* messageProcessor)
-    : CommConn(messageProcessor), mSpiDevice("/dev/spidev0.0"), mMode(SPI_MODE_0), mBitsPerWord(8), mSpeed(100000) {
+    : CommConn(messageProcessor), mSpiFd(-1), mSpiDevice("/dev/spidev0.0"), mMode(SPI_MODE_0), mBitsPerWord(8), mSpeed(100000) {
     // Constructor now only initializes member variables
 }
 

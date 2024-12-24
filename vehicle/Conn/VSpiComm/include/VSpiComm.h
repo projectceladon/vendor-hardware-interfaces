@@ -39,6 +39,10 @@ class VSpiComm : public CommConn {
     VSpiComm(MessageProcessor* messageProcessor);
     ~VSpiComm();
 
+    // Delete copy constructor and copy assignment operator
+    VSpiComm(const VSpiComm& other) = delete;
+    VSpiComm& operator=(const VSpiComm& other) = delete;
+
     inline bool isOpen() override { return mSpiFd > 0; }
     std::vector<uint8_t> read() override;
     int write(const std::vector<uint8_t>& data) override;

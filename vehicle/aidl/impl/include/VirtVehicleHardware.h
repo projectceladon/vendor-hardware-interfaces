@@ -39,6 +39,10 @@ class VirtVehicleHardware final : public FakeVehicleHardware {
 
     ~VirtVehicleHardware();
 
+    // Delete copy constructor and copy assignment operator
+    VirtVehicleHardware(const VirtVehicleHardware& other) = delete;
+    VirtVehicleHardware& operator=(const VirtVehicleHardware& other) = delete;
+
     aidl::android::hardware::automotive::vehicle::StatusCode setValues(
             std::shared_ptr<const SetValuesCallback> callback,
             const std::vector<aidl::android::hardware::automotive::vehicle::SetValueRequest>&
