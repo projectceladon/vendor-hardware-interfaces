@@ -103,12 +103,14 @@ SocketConn* SocketComm::accept() {
     socklen_t cliLen = sizeof(cliAddr);
     int sfd = ::accept(mListenFd, reinterpret_cast<struct sockaddr*>(&cliAddr), &cliLen);
 
-    if (sfd > 0) {
+    if (sfd >= 0) {
         char addr[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &cliAddr.sin_addr, addr, INET_ADDRSTRLEN);
 
         ALOGD("%s: Incoming connection received from %s:%d", __FUNCTION__, addr, cliAddr.sin_port);
         return new SocketConn(mMessageProcessor, sfd);
+    } else {
+        ALOGE("%s: Error on accept: errno: %d: %s", __FUNCTION__, errno, strerror(errno));
     }
 
     return nullptr;

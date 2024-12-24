@@ -46,6 +46,10 @@ class VehicleVmcu final : public V2_0::impl::MessageProcessor {
         VirtVehicleHardware* mHal);
     virtual ~VehicleVmcu();
 
+    // Delete copy constructor and copy assignment operator
+    VehicleVmcu(const VehicleVmcu& other) = delete;
+    VehicleVmcu& operator=(const VehicleVmcu& other) = delete;
+
     void doSetValueFromClient(const aidl::android::hardware::automotive::vehicle::VehiclePropValue& propValue);
     void processMessage(const vhal_proto::VmcuMessage& rxMsg,
                         vhal_proto::VmcuMessage* respMsg) override;
