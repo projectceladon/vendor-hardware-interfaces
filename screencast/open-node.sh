@@ -26,6 +26,8 @@ chmod 666 /dev/udmabuf
 SOCKET_DIR="/dev/socket"
 SOCKET_SERVER="$SOCKET_DIR/virt_disp_server"
 SOCKET_CLIENT="$SOCKET_DIR/virt_disp_client"
+LCS_SOCKET_SERVER="$SOCKET_DIR/virt_disp_server_lcs"
+LCS_SOCKET_CLIENT="$SOCKET_DIR/virt_disp_client_lcs"
 
 if [ -f "$SOCKET_SERVER" ]; then
   rm -f "$SOCKET_SERVER"
@@ -39,8 +41,22 @@ fi
 touch "$SOCKET_CLIENT"
 chmod 777 "$SOCKET_CLIENT"
 
+if [ -f "$LCS_SOCKET_SERVER" ]; then
+  rm -f "$LCS_SOCKET_SERVER"
+fi
+touch "$LCS_SOCKET_SERVER"
+chmod 777 "$LCS_SOCKET_SERVER"
+
+if [ -f "$LCS_SOCKET_CLIENT" ]; then
+  rm -f "$LCS_SOCKET_CLIENT"
+fi
+touch "$LCS_SOCKET_CLIENT"
+chmod 777 "$LCS_SOCKET_CLIENT"
+
 restorecon "$SOCKET_SERVER"
 restorecon "$SOCKET_CLIENT"
+restorecon "$LCS_SOCKET_SERVER"
+restorecon "$LCS_SOCKET_CLIENT"
 
 chown root /system/bin/probe-node
 chmod u+s /system/bin/probe-node
