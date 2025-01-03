@@ -30,8 +30,8 @@ namespace hci {
 
 MctProtocol::MctProtocol(int* fds, PacketReadCallback event_cb,
                          PacketReadCallback acl_cb)
-    : event_cb_(event_cb),
-      acl_cb_(acl_cb),
+    : event_cb_(std::move(event_cb)),
+      acl_cb_(std::move(acl_cb)),
       event_packetizer_([this]() { OnEventPacketReady(); }),
       acl_packetizer_([this]() { OnAclDataPacketReady(); }) {
   for (int i = 0; i < CH_MAX; i++) {

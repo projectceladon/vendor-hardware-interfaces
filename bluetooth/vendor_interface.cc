@@ -174,8 +174,9 @@ bool VendorInterface::Initialize(
     return false;
   }
   g_vendor_interface = new VendorInterface();
-  return g_vendor_interface->Open(initialize_complete_cb, event_cb, acl_cb,
-                                  sco_cb);
+  return g_vendor_interface->Open(std::move(initialize_complete_cb),
+                             std::move(event_cb), std::move(acl_cb),
+                             std::move(sco_cb));
 }
 
 void VendorInterface::Shutdown() {
@@ -192,7 +193,7 @@ bool VendorInterface::Open(InitializeCompleteCallback initialize_complete_cb,
                            PacketReadCallback event_cb,
                            PacketReadCallback acl_cb,
                            PacketReadCallback sco_cb) {
-  initialize_complete_cb_ = initialize_complete_cb;
+  initialize_complete_cb_ = std::move(initialize_complete_cb);
 
   // Initialize vendor interface
 
@@ -247,20 +248,23 @@ bool VendorInterface::Open(InitializeCompleteCallback initialize_complete_cb,
     }
   }
 
-  event_cb_ = event_cb;
+  event_cb_ = std::move(event_cb);
   PacketReadCallback intercept_events = [this](const hidl_vec<uint8_t>& event) {
     HandleIncomingEvent(event);
   };
 
   if (fd_count == 1) {
     hci::H4Protocol* h4_hci =
-        new hci::H4Protocol(fd_list[0], intercept_events, acl_cb, sco_cb);
+        new hci::H4Protocol(fd_list[0], std::move(intercept_events),
+                                                  std::move(acl_cb),
+                                                  std::move(sco_cb));
     fd_watcher_.WatchFdForNonBlockingReads(
         fd_list[0], [h4_hci](int fd) { h4_hci->OnDataReady(fd); });
     hci_ = h4_hci;
   } else {
     hci::MctProtocol* mct_hci =
-        new hci::MctProtocol(fd_list, intercept_events, acl_cb);
+        new hci::MctProtocol(fd_list, std::move(intercept_events),
+                                                   std::move(acl_cb));
     fd_watcher_.WatchFdForNonBlockingReads(
         fd_list[CH_EVT], [mct_hci](int fd) { mct_hci->OnEventDataReady(fd); });
     fd_watcher_.WatchFdForNonBlockingReads(

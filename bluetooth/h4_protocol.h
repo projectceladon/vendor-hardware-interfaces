@@ -33,9 +33,9 @@ class H4Protocol : public HciProtocol {
   H4Protocol(int fd, PacketReadCallback event_cb, PacketReadCallback acl_cb,
              PacketReadCallback sco_cb)
       : uart_fd_(fd),
-        event_cb_(event_cb),
-        acl_cb_(acl_cb),
-        sco_cb_(sco_cb),
+        event_cb_(std::move(event_cb)),
+        acl_cb_(std::move(acl_cb)),
+        sco_cb_(std::move(sco_cb)),
         hci_packetizer_([this]() { OnPacketReady(); }) {}
 
   size_t Send(uint8_t type, const uint8_t* data, size_t length);
