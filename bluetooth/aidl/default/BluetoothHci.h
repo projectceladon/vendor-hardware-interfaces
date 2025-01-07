@@ -25,6 +25,7 @@
 #include "async_fd_watcher.h"
 #include "h4_protocol.h"
 #include "net_bluetooth_mgmt.h"
+#include "net_bluetooth_mgmt_ext.h"
 
 namespace aidl::android::hardware::bluetooth::impl {
 
@@ -34,6 +35,7 @@ class BluetoothDeathRecipient;
 class BluetoothHci : public BnBluetoothHci {
  public:
   BluetoothHci(const std::string& dev_path = "/dev/hvc5");
+  BluetoothHci(const std::string& name, const std::string& dev_path = "/dev/hvc5");
 
   ndk::ScopedAStatus initialize(
       const std::shared_ptr<IBluetoothHciCallbacks>& cb) override;
@@ -67,6 +69,8 @@ class BluetoothHci : public BnBluetoothHci {
 
   std::string mDevPath;
 
+  std::string mServiceName;
+
   ::android::hardware::bluetooth::async::AsyncFdWatcher mFdWatcher;
 
   int getFdFromDevPath();
@@ -74,6 +78,7 @@ class BluetoothHci : public BnBluetoothHci {
       ::android::hardware::bluetooth::hci::PacketType type,
       const std::vector<uint8_t>& packet);
   std::unique_ptr<NetBluetoothMgmt> management_{};
+  std::unique_ptr<NetBluetoothMgmt_Ext> management_ext{};
 
   // Send a reset command and discard all packets until a reset is received.
   void reset();
