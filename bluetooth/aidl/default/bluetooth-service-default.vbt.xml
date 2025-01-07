@@ -1,6 +1,11 @@
 <manifest version="1.0" type="device">
     <hal format="aidl">
         <name>android.hardware.bluetooth</name>
-        <fqname>IBluetoothHci/default</fqname>
+	<version>1</version>
+        <interface>
+            <name>IBluetoothHci</name>
+            <instance>ext</instance>
+            <instance>default</instance>
+        </interface>
     </hal>
 </manifest>

@@ -16,7 +16,7 @@
 
 #define LOG_TAG "android.hardware.bluetooth.service.default.vbt"
 
-#include "net_bluetooth_mgmt.h"
+#include "net_bluetooth_mgmt_ext.h"
 
 #include <fcntl.h>
 #include <log/log.h>
@@ -89,7 +89,7 @@ namespace aidl::android::hardware::bluetooth::impl {
 
 // Wait indefinitely for the selected HCI interface to be enabled in the
 // bluetooth driver.
-int NetBluetoothMgmt::waitHciDev(int hci_interface) {
+int NetBluetoothMgmt_Ext::waitHciDev(int hci_interface) {
   ALOGI("waiting for hci interface %d", hci_interface);
 
   int ret = -1;
@@ -188,7 +188,7 @@ end:
   return ret;
 }
 
-int NetBluetoothMgmt::openRfkill() {
+int NetBluetoothMgmt_Ext::openRfkill() {
   int fd = open("/dev/rfkill", O_RDWR);
   if (fd < 0) {
     ALOGE("unable to open /dev/rfkill: %s", strerror(errno));
@@ -212,10 +212,11 @@ int NetBluetoothMgmt::openRfkill() {
 
     ALOGI("index:%d type:%d op:%d", event.idx, event.type, event.op);
 
-    if (event.op == RFKILL_OP_ADD && event.type == RFKILL_TYPE_BLUETOOTH) {
-      rfkill_bt_index_ = event.idx;
-      rfkill_fd_ = fd;
-      return 0;
+    if (event.op == RFKILL_OP_ADD && event.type == RFKILL_TYPE_BLUETOOTH &&
+      event.idx == static_cast<uint16_t>(m_hci_interface)) {
+        rfkill_bt_index_ = event.idx;
+        rfkill_fd_ = fd;
+        return 0;
     }
   }
 
@@ -224,7 +225,7 @@ int NetBluetoothMgmt::openRfkill() {
 }
 
 // Block or unblock Bluetooth.
-int NetBluetoothMgmt::rfkill(int block) {
+int NetBluetoothMgmt_Ext::rfkill(int block) {
   if (rfkill_fd_ == -1) {
     openRfkill();
   }
@@ -251,8 +252,8 @@ int NetBluetoothMgmt::rfkill(int block) {
   return 0;
 }
 
-int NetBluetoothMgmt::openHci(int hci_interface) {
-  ALOGI("opening hci interface %d", hci_interface);
+int NetBluetoothMgmt_Ext::openHci(int hci_interface) {
+  ALOGI("%s opening hci interface %d", __FUNCTION__, hci_interface);
 
   // Unblock Bluetooth.
   rfkill(0);
@@ -292,10 +293,12 @@ int NetBluetoothMgmt::openHci(int hci_interface) {
 
   ALOGI("hci interface %d ready", hci_interface);
   bt_fd_ = fd;
+
+  m_hci_interface = hci_interface;
   return fd;
 }
 
-void NetBluetoothMgmt::closeHci() {
+void NetBluetoothMgmt_Ext::closeHci() {
   if (bt_fd_ != -1) {
     ::close(bt_fd_);
     bt_fd_ = -1;

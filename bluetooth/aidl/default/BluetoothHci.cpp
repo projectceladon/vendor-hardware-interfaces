@@ -118,6 +118,14 @@ BluetoothHci::BluetoothHci(const std::string& dev_path) {
   mDeathRecipient = std::make_shared<BluetoothDeathRecipient>(this);
 }
 
+BluetoothHci::BluetoothHci(const std::string& name, const std::string& dev_path) {
+  char property_bytes[PROPERTY_VALUE_MAX];
+  property_get("vendor.ser.bt-uart", property_bytes, dev_path.c_str());
+  mDevPath = std::string(property_bytes);
+  mDeathRecipient = std::make_shared<BluetoothDeathRecipient>(this);
+  mServiceName = name;
+}
+
 int BluetoothHci::getFdFromDevPath() {
   int fd = open(mDevPath.c_str(), O_RDWR);
   if (fd < 0) {
@@ -244,11 +252,22 @@ ndk::ScopedAStatus BluetoothHci::initialize(
 
   isLocalLoopbackActive = false;
   mCb = cb;
-  management_.reset(new NetBluetoothMgmt);
-  mFd = management_->openHci();
-  if (mFd < 0) {
-    management_.reset();
 
+  if (mServiceName.compare("default") == 0 ) {
+    management_.reset(new NetBluetoothMgmt);
+    mFd = management_->openHci(0);
+
+    if (mFd < 0)
+        management_.reset();
+  } else if (mServiceName.compare("ext") == 0 ) {
+    management_ext.reset(new NetBluetoothMgmt_Ext);
+    mFd = management_ext->openHci(1);
+
+    if (mFd < 0)
+        management_ext.reset();
+  }
+
+  if (mFd < 0) {
     ALOGI("Unable to open Linux interface, trying default path.");
     mFd = getFdFromDevPath();
     if (mFd < 0) {
@@ -334,10 +353,18 @@ ndk::ScopedAStatus BluetoothHci::close() {
 
   mFdWatcher.StopWatchingFileDescriptors();
 
-  if (management_) {
-    management_->closeHci();
-  } else {
-    ::close(mFd);
+  if (mServiceName.compare("default") == 0 ) {
+    if (management_) {
+      management_->closeHci();
+    } else {
+      ::close(mFd);
+    }
+  } else if (mServiceName.compare("ext") == 0 ) {
+    if (management_ext) {
+      management_ext->closeHci();
+    } else {
+      ::close(mFd);
+    }
   }
 
   {

@@ -33,6 +33,7 @@ cc_test {
         "libhidlbase",
         "liblog",
         "libutils",
+        "libusb",
     ],
     static_libs: [
         "android.hardware.bluetooth.async",
