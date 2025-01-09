@@ -116,7 +116,7 @@ void VehicleVmcu::doGetConfig(const VehicleVmcu::VmcuMessage& rxMsg,
     }
 
     vhal_proto::VehiclePropConfig* protoCfg = respMsg->add_config();
-    populateProtoVehicleConfig(*result.value(), protoCfg);
+    populateProtoVehicleConfig(result.value(), protoCfg);
     respMsg->set_status(vhal_proto::RESULT_OK);
 }
 

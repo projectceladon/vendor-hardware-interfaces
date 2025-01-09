@@ -33,7 +33,7 @@ class VehicleVmcuTest;
 class VirtVehicleHardware final : public FakeVehicleHardware {
   public:
     using AidlVehiclePropValue = aidl::android::hardware::automotive::vehicle::VehiclePropValue;
-    using ConfigResultType = android::base::Result<const aidl::android::hardware::automotive::vehicle::VehiclePropConfig*, VhalError>;
+    using ConfigResultType = android::base::Result<aidl::android::hardware::automotive::vehicle::VehiclePropConfig, VhalError>;
 
     VirtVehicleHardware();
 
