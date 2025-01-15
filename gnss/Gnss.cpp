@@ -17,12 +17,14 @@
 #define LOG_TAG "GnssAidl"
 
 #include "Gnss.h"
+#include <cutils/properties.h>
 #include <inttypes.h>
 #include <log/log.h>
 #include <utils/Timers.h>
 #include "AGnss.h"
 #include "AGnssRil.h"
 #include "DeviceFileReader.h"
+#include "SockFileReader.h"
 #include "FixLocationParser.h"
 #include "NmeaFixInfo.h"
 #include "GnssAntennaInfo.h"
@@ -46,7 +48,17 @@ constexpr int TTFF_MILLIS = 2200;
 
 std::shared_ptr<IGnssCallback> Gnss::sGnssCallback = nullptr;
 
-Gnss::Gnss() : mMinIntervalMs(1000), mFirstFixReceived(false) {}
+Gnss::Gnss() : mMinIntervalMs(1000), mFirstFixReceived(false) {
+    char value[PROPERTY_VALUE_MAX] = { 0 };
+    if (property_get("ro.boot.gnss_type", value, "raw") <= 0) {
+        ALOGE("Failed to get the ro.boot.gnss_type property");
+    }
+
+    if (strcmp(value, "virt") == 0)
+        mGnssPassthrough = false;
+    else
+        mGnssPassthrough = true;
+}
 
 ScopedAStatus Gnss::setCallback(const std::shared_ptr<IGnssCallback>& callback) {
     ALOGD("setCallback");
@@ -96,8 +108,13 @@ ScopedAStatus Gnss::setCallback(const std::shared_ptr<IGnssCallback>& callback) 
 }
 
 std::unique_ptr<GnssLocation> Gnss::getLocationFromHW() {
-    std::string inputStr =
-			::android::hardware::gnss::common::DeviceFileReader::Instance().getLocationData();
+    std::string inputStr;
+    if (mGnssPassthrough)
+        inputStr =
+            ::android::hardware::gnss::common::DeviceFileReader::Instance().getLocationData();
+    else
+        inputStr =
+            ::android::hardware::gnss::common::SockFileReader::Instance().getLocationData();
     ALOGD("getLocationFromHW()");
     return ::android::hardware::gnss::common::NmeaFixInfo::getAidlLocationFromInputStr(inputStr);
 }
