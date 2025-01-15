@@ -111,6 +111,7 @@ class Gnss : public BnGnss {
     ::android::hardware::gnss::common::ThreadBlocker mThreadBlocker;
 
     mutable std::mutex mMutex;
+    bool mGnssPassthrough;
 };
 
 }  // namespace aidl::android::hardware::gnss
