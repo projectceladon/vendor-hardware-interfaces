@@ -144,6 +144,15 @@ ScopedAStatus Sensors::setOperationMode(OperationMode in_mode) {
     for (auto sensor : mSensors) {
         sensor.second->setOperationMode(in_mode);
     }
+
+    //In case of no sensors
+    std::vector<SensorInfo> sensorInfoList;
+    getSensorsList(&sensorInfoList);
+    if (sensorInfoList.size() == 0) {
+        ALOGD("sensors list is empty");
+    return ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
+    }
+
     return ScopedAStatus::ok();
 }
 
