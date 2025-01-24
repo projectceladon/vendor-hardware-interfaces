@@ -120,7 +120,7 @@ bool H4Protocol::IsIntelController(uint16_t vid, uint16_t pid) {
 
 int H4Protocol::GetUsbpath(void) {
     size_t count, i;
-    int ret = 0, busnum, devnum;
+    int ret = 0, busnum;
     struct libusb_device **dev_list = NULL;
     struct libusb_context *ctx;
     uint16_t vid = 0, pid = 0;
@@ -138,7 +138,6 @@ int H4Protocol::GetUsbpath(void) {
     for (i = 0; i < count; ++i) {
         struct libusb_device* dev = dev_list[i];
         busnum = libusb_get_bus_number(dev);
-        devnum = libusb_get_device_address(dev);
         struct libusb_device_descriptor descriptor;
         ret = libusb_get_device_descriptor(dev, &descriptor);
         if (ret < 0)  {
@@ -148,8 +147,8 @@ int H4Protocol::GetUsbpath(void) {
         vid = descriptor.idVendor;
         pid = descriptor.idProduct;
         if (H4Protocol::IsIntelController(vid, pid)) {
-            snprintf(dev_address, sizeof(dev_address), "/dev/bus/usb/%03d/%03d",
-                                                       busnum, devnum);
+            snprintf(dev_address, sizeof(dev_address), "/dev/bus/usb/%03d/btusb",
+                                                       busnum);
             ALOGD("Value of BT device address = %s", dev_address);
             goto exit;
         }
