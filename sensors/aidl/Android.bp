@@ -116,3 +116,34 @@ cc_binary {
     ],
     srcs: ["main.cpp"],
 }
+
+prebuilt_etc {
+    name: "sensors-aidl.rc",
+    src: "sensors-aidl.rc",
+    installable: false,
+}
+
+prebuilt_etc {
+    name: "sensors-aidl.xml",
+    src: "sensors-aidl.xml",
+    sub_dir: "vintf",
+    installable: false,
+}
+
+// Default vendor APEX for android.hardware.sensors.
+// Custom implementations may use override_apex based on this APEX.
+apex {
+    name: "com.android.hardware.sensors.intel",
+    manifest: "apex_manifest.json",
+    key: "com.android.hardware.key",
+    certificate: ":com.android.hardware.certificate",
+    file_contexts: "file_contexts",
+    updatable: false,
+    vendor: true,
+
+    binaries: ["android.hardware.sensors@aidl-service.intel"],
+    prebuilts: [
+        "sensors-aidl.rc", // init rc
+        "sensors-aidl.xml", // vintf fragment
+    ],
+}
