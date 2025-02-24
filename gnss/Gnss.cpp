@@ -35,6 +35,7 @@
 #include "GnssVisibilityControl.h"
 #include "MeasurementCorrectionsInterface.h"
 #include "NmeaFixInfo.h"
+#include "SockFileReader.h"
 #include "Utils.h"
 
 namespace aidl::android::hardware::gnss {
@@ -48,6 +49,15 @@ constexpr int TTFF_MILLIS = 2200;
 std::shared_ptr<IGnssCallback> Gnss::sGnssCallback = nullptr;
 
 Gnss::Gnss() : mMinIntervalMs(1000), mFirstFixReceived(false) {
+    char value[PROPERTY_VALUE_MAX] = { 0 };
+    if (property_get("ro.boot.gnss_type", value, "raw") <= 0) {
+        ALOGE("Failed to get the ro.boot.gnss_type property");
+    }
+
+    if (strcmp(value, "virt") == 0)
+        mGnssPassthrough = false;
+    else
+        mGnssPassthrough = true;
 }
 
 ScopedAStatus Gnss::setCallback(const std::shared_ptr<IGnssCallback>& callback) {
@@ -100,8 +110,13 @@ std::unique_ptr<GnssLocation> Gnss::getLocationFromHW() {
     if (!::android::hardware::gnss::common::ReplayUtils::hasFixedLocationDeviceFile()) {
         return nullptr;
     }
-    std::string inputStr =
+    std::string inputStr;
+    if (mGnssPassthrough)
+        inputStr =
             ::android::hardware::gnss::common::DeviceFileReader::Instance().getLocationData();
+    else
+        inputStr =
+            ::android::hardware::gnss::common::SockFileReader::Instance().getLocationData();
 
     return ::android::hardware::gnss::common::NmeaFixInfo::getAidlLocationFromInputStr(inputStr);
 }
@@ -138,16 +153,16 @@ ScopedAStatus Gnss::start() {
             auto currentLocation = getLocationFromHW();
             mGnssPowerIndication->notePowerConsumption();
             if (currentLocation != nullptr) {
-                ALOGD("reportLocation real %s", (*currentLocation).toString().c_str());
+                ALOGV("reportLocation real %s", (*currentLocation).toString().c_str());
                 mMinIntervalMs = 1000;
                 this->reportLocation(*currentLocation);
             } else if (mLastLocation != nullptr) {
-                ALOGD("reportLocation lastlocation %s", (*mLastLocation).toString().c_str());
+                ALOGV("reportLocation lastlocation %s", (*mLastLocation).toString().c_str());
                 mMinIntervalMs = 3000;
                 this->reportLocation(*mLastLocation);
             } else {
                 const auto location = Utils::getMockLocation();
-                ALOGD("reportLocation mock %s",  location.toString().c_str());
+                ALOGV("reportLocation mock %s",  location.toString().c_str());
                 mMinIntervalMs = 3000;
                 this->reportLocation(location);
             }
