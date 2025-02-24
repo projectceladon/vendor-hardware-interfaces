@@ -84,7 +84,6 @@ void DeviceFileReader::getDataFromDeviceFile(const std::string& command, int mMi
     }
     close(epoll_fd);
 
-    ALOGE("Gnss data %s", inputStr.c_str());
     // Cache the injected data.
     if (command == CMD_GET_LOCATION) {
         // TODO validate data
