@@ -1,0 +1,4 @@
+service vendor.gnss-intel /apex/com.android.hardware.gnss/bin/hw/android.hardware.gnss-service.intel
+    class hal
+    user vendor_gnss
+    group vendor_gnss system
