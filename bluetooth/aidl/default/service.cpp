@@ -36,14 +36,24 @@ int main(int /* argc */, char** /* argv */) {
   }
 
   std::shared_ptr<BluetoothHci> service =
-      ndk::SharedRefBase::make<BluetoothHci>();
+      ndk::SharedRefBase::make<BluetoothHci>("default", "/dev/hvc5");
   std::string instance = std::string() + BluetoothHci::descriptor + "/default";
   auto result =
       AServiceManager_addService(service->asBinder().get(), instance.c_str());
+  if (result != STATUS_OK) {
+    ALOGE("Could not register default as a service!");
+    return 0;
+  }
+
+  std::shared_ptr<BluetoothHci> service_ext =
+    ndk::SharedRefBase::make<BluetoothHci>("ext", "/dev/hvc5");
+  std::string instance_ext = std::string() + BluetoothHci::descriptor + "/ext";
+  result = AServiceManager_addService(service_ext->asBinder().get(), instance_ext.c_str());
+
   if (result == STATUS_OK) {
     ABinderProcess_joinThreadPool();
   } else {
-    ALOGE("Could not register as a service!");
+    ALOGE("Could not register ext as a service!");
   }
   return 0;
 }
