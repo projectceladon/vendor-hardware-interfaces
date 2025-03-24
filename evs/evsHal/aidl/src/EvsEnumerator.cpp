@@ -36,6 +36,7 @@
 
 #include <string_view>
 
+#define MAX_RETRY 10
 namespace {
 
 using ::aidl::android::frameworks::automotive::display::ICarDisplayProxy;
@@ -231,17 +232,28 @@ void EvsEnumerator::enumerateCameras() {
         LOG_FATAL("Failed to open /dev folder\n");
     }
     struct dirent* entry;
-    while ((entry = readdir(dir)) != nullptr) {
-        // We're only looking for entries starting with 'video'
-        if (strncmp(entry->d_name, "video", 5) == 0) {
-            std::string deviceName("/dev/");
-            deviceName += entry->d_name;
-            ++videoCount;
+    int status = 0;
+    for(int i=0;i < MAX_RETRY;i++) {
+        if(status == 1) break;
+        while ((entry = readdir(dir)) != nullptr) {
+            // We're only looking for entries starting with 'video'
+            if (strncmp(entry->d_name, "video", 5) == 0) {
+                std::string deviceName("/dev/");
+                deviceName += entry->d_name;
+                ++videoCount;
 
-            if (addCaptureDevice(deviceName)) {
-                ++captureCount;
+                if (addCaptureDevice(deviceName)) {
+                    ++captureCount;
+                }
+                status = 1;
             }
-        }
+       }
+       rewinddir(dir);
+       if(status == 0) {
+           if(usleep(200000) < 0) {
+               LOG(ERROR) << "Failed to Sleep";
+           }
+       }
     }
 
     LOG(INFO) << "Found " << captureCount << " qualified video capture devices "
@@ -617,69 +629,77 @@ bool EvsEnumerator::qualifyCaptureDevice(const char* deviceName) {
         int mFd = -1;
     };
 
-    FileHandleWrapper fd = open(deviceName, O_RDWR, 0);
-    if (fd < 0) {
-        return false;
-    }
-
-    v4l2_capability caps;
-    int result = ioctl(fd, VIDIOC_QUERYCAP, &caps);
-    if (result < 0) {
-        return false;
-    }
-    if (((caps.capabilities & (V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_VIDEO_CAPTURE_MPLANE)) == 0) ||
-        ((caps.capabilities & V4L2_CAP_STREAMING) == 0)) {
-        return false;
-    }
-
-    // Enumerate the available capture formats (if any)
-    v4l2_fmtdesc formatDescription;
-    formatDescription.type = (caps.capabilities & V4L2_CAP_VIDEO_CAPTURE) ? V4L2_BUF_TYPE_VIDEO_CAPTURE : V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-
-    bool found = false;
-    for (int i = 0; !found; ++i) {
-        formatDescription.index = i;
-        if (ioctl(fd, VIDIOC_ENUM_FMT, &formatDescription) == 0) {
-            LOG(DEBUG) << "Format: 0x" << std::hex << formatDescription.pixelformat << " Type: 0x"
-                       << std::hex << formatDescription.type
-                       << " Desc: " << formatDescription.description << " Flags: 0x" << std::hex
-                       << formatDescription.flags;
-            switch (formatDescription.pixelformat) {
-                case V4L2_PIX_FMT_YUYV:
-                case V4L2_PIX_FMT_UYVY:
-                    found = true;
-                    break;
-                case V4L2_PIX_FMT_NV21:
-                    found = true;
-                    break;
-                case V4L2_PIX_FMT_NV16:
-                    found = true;
-                    break;
-                case V4L2_PIX_FMT_YVU420:
-                    found = true;
-                    break;
-                case V4L2_PIX_FMT_RGB32:
-                    found = true;
-                    break;
-#ifdef V4L2_PIX_FMT_ARGB32  // introduced with kernel v3.17
-                case V4L2_PIX_FMT_ARGB32:
-                    found = true;
-                    break;
-                case V4L2_PIX_FMT_XRGB32:
-                    found = true;
-                    break;
-#endif  // V4L2_PIX_FMT_ARGB32
-                default:
-                    LOG(WARNING) << "Unsupported, " << std::hex << formatDescription.pixelformat;
-                    break;
+    int status = 0;
+    for(int i = 0;i < MAX_RETRY;i++) {
+        if(status == 1)break;
+        FileHandleWrapper fd = open(deviceName, O_RDWR, 0);
+        if (fd < 0) {
+            LOG(ERROR) << "Failed to open device";
+            if(usleep(200000) < 0){
+                LOG(ERROR)<< "Failed to Sleep";
             }
-        } else {
-            // No more formats available.
-            break;
+            continue;
         }
-    }
+        status = 1;
+        v4l2_capability caps;
+        int result = ioctl(fd, VIDIOC_QUERYCAP, &caps);
+        if (result < 0) {
+            return false;
+        }
+        if (((caps.capabilities & (V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_VIDEO_CAPTURE_MPLANE)) == 0) ||
+            ((caps.capabilities & V4L2_CAP_STREAMING) == 0)) {
+            return false;
+        }
 
-    return found;
+        // Enumerate the available capture formats (if any)
+        v4l2_fmtdesc formatDescription;
+        formatDescription.type = (caps.capabilities & V4L2_CAP_VIDEO_CAPTURE) ? V4L2_BUF_TYPE_VIDEO_CAPTURE : V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+
+        bool found = false;
+        for (int i = 0; !found; ++i) {
+            formatDescription.index = i;
+            if (ioctl(fd, VIDIOC_ENUM_FMT, &formatDescription) == 0) {
+                LOG(DEBUG) << "Format: 0x" << std::hex << formatDescription.pixelformat << " Type: 0x"
+                        << std::hex << formatDescription.type
+                        << " Desc: " << formatDescription.description << " Flags: 0x" << std::hex
+                        << formatDescription.flags;
+                switch (formatDescription.pixelformat) {
+                    case V4L2_PIX_FMT_YUYV:
+                    case V4L2_PIX_FMT_UYVY:
+                        found = true;
+                        break;
+                    case V4L2_PIX_FMT_NV21:
+                        found = true;
+                        break;
+                    case V4L2_PIX_FMT_NV16:
+                        found = true;
+                        break;
+                    case V4L2_PIX_FMT_YVU420:
+                        found = true;
+                        break;
+                    case V4L2_PIX_FMT_RGB32:
+                        found = true;
+                        break;
+    #ifdef V4L2_PIX_FMT_ARGB32  // introduced with kernel v3.17
+                    case V4L2_PIX_FMT_ARGB32:
+                        found = true;
+                        break;
+                    case V4L2_PIX_FMT_XRGB32:
+                        found = true;
+                        break;
+    #endif  // V4L2_PIX_FMT_ARGB32
+                    default:
+                        LOG(WARNING) << "Unsupported, " << std::hex << formatDescription.pixelformat;
+                        break;
+                }
+            } else {
+                // No more formats available.
+                break;
+            }
+        }
+        return found;
+    }
+    return false;
 }
 
 EvsEnumerator::CameraRecord* EvsEnumerator::findCameraById(const std::string& cameraId) {
