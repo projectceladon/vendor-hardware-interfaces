@@ -1,10 +1,13 @@
 The script check-process-name.sh is used to detect the process name of app in Andorid.
-1. Modify the ip adress of Android device in the script accordingly.
+1. Get the IP and PORT or Serial Number of Android device.
 2. Run the script before open/run the Android app:
    $ chmod +x check-process-name.sh
-   $ ./check-process-name.sh
-3. Run the Android app, the process name will print out. 
-4. Add the process name to the dgpu-renderwlocal.cfg
+   $ ./check-process-name.sh IP:PORT
+   or
+   $ ./check-process-name.sh Serial Number
+3. Run the Android app, after app complete or after a while, ctrl+ c to stop the sript.
+   The process names of app will print out.
+4. Add the process names to the dgpu-renderwlocal.cfg
    then push to /vendor/etc/
    $ adb push dgpu-renderwlocal.cfg /vendor/etc/
    Or rebuild the Android image.
