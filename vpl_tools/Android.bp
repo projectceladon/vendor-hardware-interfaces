@@ -1,0 +1,35 @@
+cc_prebuilt_binary {
+    name: "vpl_sample_decode",
+    srcs: [
+    	"vpl_sample_decode",
+    ],
+    vendor: true,
+    check_elf_files: false,
+}
+
+cc_prebuilt_binary {
+    name: "vpl_sample_encode",
+    srcs: [
+        "vpl_sample_encode",
+    ],
+    vendor: true,
+    check_elf_files: false,
+}
+
+cc_prebuilt_binary {
+    name: "vpl_sample_multi_transcode",
+    srcs: [
+        "vpl_sample_multi_transcode",
+    ],
+    vendor: true,
+    check_elf_files: false,
+}
+
+cc_prebuilt_binary {
+    name: "vpl_sample_vpp",
+    srcs: [
+        "vpl_sample_vpp",
+    ],
+    vendor: true,
+    check_elf_files: false,
+}
