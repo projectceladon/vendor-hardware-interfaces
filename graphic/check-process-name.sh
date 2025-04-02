@@ -6,8 +6,9 @@ cleanup_and_exit() {
     echo -e "\nDetect Ctrl+C，clean up the temporary files..."
     rm -f diff_process process_name after before
     echo "Add the following process names to cfg file, excluding the system related process, like:
-    system_server, ndroid.systemui, hardware.intel. etc."
+    main, mapsplaceholder, system_server, ndroid.systemui, hardware.intel. etc."
     cat add_process
+    echo -e "\n"
     rm add_process
     exit 0
 }
@@ -56,6 +57,10 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+echo -e "\nRun the Android app, after app complete or after a while, ctrl+ c to stop the sript.\nThe process names of app will print out."
+
+keywords=("main" "mapsplaceholder" "system_server" "ndroid.systemui" "hardware.intel." "car.carlauncher" "car.usb.handler" "id.car.settings")
+
 touch before
 touch after
 adb -s $device shell lsof /dev/dri/renderD128 > before
@@ -67,8 +72,18 @@ while true; do
     diff before after > diff_process
     awk '{print $2}' diff_process | sort -u >process_name
     while read -r line; do
-        if ! grep -Fxq "$line" add_process; then
-            echo "$line" >> add_process
+        match_found=false
+        for keyword in "${keywords[@]}"; do
+            if [[ "$line" == "$keyword"* ]]; then
+                match_found=true
+                break
+            fi
+        done
+
+        if [ "$match_found" = false ]; then
+            if ! grep -Fxq "$line" add_process; then
+                echo "$line" >> add_process
+            fi
         fi
     done < process_name
 
