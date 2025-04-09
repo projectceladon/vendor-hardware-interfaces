@@ -147,7 +147,7 @@ bool VideoTex::refresh() {
 
 VideoTex* createVideoTexture(const std::shared_ptr<IEvsEnumerator>& pEnum, const char* evsCameraId,
                              std::unique_ptr<Stream> streamCfg, EGLDisplay glDisplay,
-                             bool useExternalMemory, android_pixel_format_t format) {
+                             bool useExternalMemory, android_pixel_format_t format, ConfigManager::CameraParam* param) {
     // Set up the camera to feed this texture
     std::shared_ptr<IEvsCamera> pCamera;
     std::shared_ptr<StreamHandler> pStreamHandler;
@@ -171,7 +171,7 @@ VideoTex* createVideoTexture(const std::shared_ptr<IEvsEnumerator>& pEnum, const
     }
 
     // Start the video stream
-    if (!pStreamHandler->startStream()) {
+    if (!pStreamHandler->startStream(param)) {
         printf("Couldn't start the camera stream (%s)\n", evsCameraId);
         LOG(ERROR) << "Start stream failed for " << evsCameraId;
         return nullptr;

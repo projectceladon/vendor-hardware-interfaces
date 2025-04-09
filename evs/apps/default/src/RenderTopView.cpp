@@ -149,7 +149,7 @@ bool RenderTopView::activate() {
     targetCfg->width = cam.info.width;
     targetCfg->height = cam.info.height;
         cam.tex.reset(
-                createVideoTexture(mEnumerator, cam.info.cameraId.c_str(), std::move(targetCfg), sDisplay));
+                createVideoTexture(mEnumerator, cam.info.cameraId.c_str(), std::move(targetCfg), sDisplay,&(cam.info.camparam)));
         if (!cam.tex) {
             LOG(ERROR) << "Failed to set up video texture for " << cam.info.cameraId << " ("
                        << cam.info.function << ")";

@@ -61,7 +61,7 @@ bool RenderPixelCopy::activate() {
     }
 
     // Start the video stream
-    if (!pStreamHandler->startStream()) {
+    if (!pStreamHandler->startStream(&(mCameraInfo.camparam))) {
         LOG(ERROR) << "Start stream failed";
         return false;
     }

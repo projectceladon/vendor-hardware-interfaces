@@ -131,7 +131,7 @@ bool RenderDirectView::activate() {
     mTexture.reset(createVideoTexture(mEnumerator, mCameraDesc.id.c_str(),
                                       foundCfg ? std::move(targetCfg) : nullptr, sDisplay,
                                       mConfig.getUseExternalMemory(),
-                                      mConfig.getExternalMemoryFormat()));
+                                      mConfig.getExternalMemoryFormat(),&(mCameraInfo.camparam)));
     if (!mTexture) {
         LOG(ERROR) << "Failed to set up video texture for " << mCameraDesc.id;
         return false;

@@ -24,6 +24,22 @@
 
 class ConfigManager final {
 public:
+    struct CameraParam {
+        int32_t autotune;
+        int32_t brightness;
+        int32_t contrast;
+        int32_t autogain;
+        int32_t gain;
+        int32_t awb;
+        int32_t wbt;
+        int32_t sharpness;
+        int32_t ae;
+        int32_t exposureval;
+        int32_t af;
+        int32_t focusval;
+        int32_t abszoom;
+    };
+
     struct CameraInfo {
         std::string cameraId = "";  // The name of the camera from the point of view of the HAL
         std::string function = "";  // The expected use for this camera ("reverse", "left", "right")
@@ -37,6 +53,7 @@ public:
         bool vflip = false;  // boolean to flip the preview vertically
         float width = 0;
         float height = 0;
+        CameraParam camparam;
     };
 
     struct DisplayInfo {
