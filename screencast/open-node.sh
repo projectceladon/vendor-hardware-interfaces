@@ -60,3 +60,7 @@ restorecon "$LCS_SOCKET_CLIENT"
 
 chown root /system/bin/probe-node
 chmod u+s /system/bin/probe-node
+
+if [ "$value" == "1" ]; then
+  /system/bin/dm-backend -s ivshm-ivshmem,/dev/ivshm1.default,virtio-gpu,lcs=1920x1080+0+0
+fi
