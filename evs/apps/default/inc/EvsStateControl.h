@@ -90,6 +90,7 @@ private:
     aidl::android::hardware::automotive::vehicle::VehiclePropValue mGearValue;
     aidl::android::hardware::automotive::vehicle::VehiclePropValue mTurnSignalValue;
 
+    aidl::android::hardware::automotive::vehicle::VehiclePropValue mPowerStateReport;
     State mCurrentState = OFF;
 
     // mCameraList is a redundant storage for camera device info, which is also
@@ -112,6 +113,8 @@ private:
     // True if the first frame displayed on the mCurrentRenderer. Resets to false when
     // mCurrentRenderer changes.
     bool mFirstFrameIsDisplayed;
+
+    bool mSuspend;
 };
 
 #endif  // CAR_EVS_APP_EVSSTATECONTROL_H
