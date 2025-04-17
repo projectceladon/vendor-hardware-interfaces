@@ -28,6 +28,7 @@
 #include <aidl/android/hardware/automotive/vehicle/VehicleProperty.h>
 #include <aidl/android/hardware/automotive/vehicle/VehiclePropertyType.h>
 #include <aidl/android/hardware/automotive/vehicle/VehicleTurnSignal.h>
+#include <aidl/android/hardware/automotive/vehicle/VehicleApPowerStateReport.h>
 #include <android-base/logging.h>
 #include <android/binder_manager.h>
 #include <utils/SystemClock.h>
@@ -43,11 +44,13 @@ using aidl::android::hardware::automotive::evs::CameraDesc;
 using aidl::android::hardware::automotive::evs::DisplayState;
 using aidl::android::hardware::automotive::evs::IEvsDisplay;
 using aidl::android::hardware::automotive::evs::IEvsEnumerator;
+using aidl::android::hardware::automotive::evs::DisplayDesc;
 using aidl::android::hardware::automotive::vehicle::VehicleGear;
 using aidl::android::hardware::automotive::vehicle::VehicleProperty;
 using aidl::android::hardware::automotive::vehicle::VehiclePropertyType;
 using aidl::android::hardware::automotive::vehicle::VehiclePropValue;
 using aidl::android::hardware::automotive::vehicle::VehicleTurnSignal;
+using aidl::android::hardware::automotive::vehicle::VehicleApPowerStateReport;
 using android::frameworks::automotive::vhal::ErrorCode;
 using android::frameworks::automotive::vhal::IHalPropValue;
 using android::frameworks::automotive::vhal::IVhalClient;
@@ -73,15 +76,19 @@ EvsStateControl::EvsStateControl(std::shared_ptr<IVhalClient> pVnet,
       mDisplay(pDisplay),
       mConfig(config),
       mCurrentState(OFF),
-      mEvsStats(EvsStats::build()) {
+      mEvsStats(EvsStats::build()),
+      mSuspend(false) {
     // Initialize the property value containers we'll be updating (they'll be zeroed by default)
     static_assert(getPropType(VehicleProperty::GEAR_SELECTION) == VehiclePropertyType::INT32,
                   "Unexpected type for GEAR_SELECTION property");
     static_assert(getPropType(VehicleProperty::TURN_SIGNAL_STATE) == VehiclePropertyType::INT32,
                   "Unexpected type for TURN_SIGNAL_STATE property");
+    static_assert(getPropType(VehicleProperty::AP_POWER_STATE_REPORT) == VehiclePropertyType::INT32_VEC,
+                  "Unexpected type for AP_POWER_STATE_REPORT");
 
     mGearValue.prop = static_cast<int32_t>(VehicleProperty::GEAR_SELECTION);
     mTurnSignalValue.prop = static_cast<int32_t>(VehicleProperty::TURN_SIGNAL_STATE);
+    mPowerStateReport.prop = static_cast<int32_t>(VehicleProperty::AP_POWER_STATE_REPORT);
 
     // This way we only ever deal with cameras which exist in the system
     // Build our set of cameras for the states we support
@@ -253,8 +260,13 @@ bool EvsStateControl::selectStateForCurrentConditions() {
     static int32_t sMockSignal = int32_t(VehicleTurnSignal::NONE);
 
     if (mVehicle != nullptr) {
-	LOG(INFO) <<"read gear signal from vehicle";
+        LOG(DEBUG) <<"read gear signal from vehicle";
         // Query the car state
+        if(invokeGet(&mPowerStateReport) != ErrorCode::OK)
+        {
+            LOG(ERROR) << "Read Power State Failed";
+        }
+
         if (invokeGet(&mGearValue) != ErrorCode::OK) {
             LOG(ERROR) << "GEAR_SELECTION not available from vehicle.  Exiting.";
             return false;
@@ -283,15 +295,26 @@ bool EvsStateControl::selectStateForCurrentConditions() {
     }
     // Choose our desired EVS state based on the current car state
     State desiredState = OFF;
-    if (mGearValue.value.int32Values[0] == int32_t(VehicleGear::GEAR_REVERSE)) {
-        desiredState = REVERSE;
-    } else if (mTurnSignalValue.value.int32Values[0] == int32_t(VehicleTurnSignal::RIGHT)) {
-        desiredState = RIGHT;
-    } else if (mTurnSignalValue.value.int32Values[0] == int32_t(VehicleTurnSignal::LEFT)) {
-        desiredState = LEFT;
-    } else if (mGearValue.value.int32Values[0] == int32_t(VehicleGear::GEAR_PARK)) {
-        desiredState = PARKING;
+    if(mPowerStateReport.value.int32Values[0] == int32_t(VehicleApPowerStateReport::ON))
+    {
+        if (mTurnSignalValue.value.int32Values[0] == int32_t(VehicleTurnSignal::RIGHT)) {
+            desiredState = RIGHT;
+        } else if (mTurnSignalValue.value.int32Values[0] == int32_t(VehicleTurnSignal::LEFT)) {
+            desiredState = LEFT;
+        }
+        if (mGearValue.value.int32Values[0] == int32_t(VehicleGear::GEAR_REVERSE)) {
+            desiredState = REVERSE;
+        } else if (mGearValue.value.int32Values[0] == int32_t(VehicleGear::GEAR_PARK)) {
+            desiredState = PARKING;
+        }
     }
+    else if(mPowerStateReport.value.int32Values[0] == int32_t(VehicleApPowerStateReport::SHUTDOWN_PREPARE))
+    {
+        LOG(INFO) << "ShutDown EVS as Part of Suspend Prepare";
+        desiredState = OFF;
+        mSuspend = true;
+    }
+
     // Apply the desire state
     return configureEvsPipeline(desiredState);
 }
@@ -373,22 +396,24 @@ bool EvsStateControl::configureEvsPipeline(State desiredState) {
         isGlReady = true;
     }
 
+    std::shared_ptr<IEvsDisplay> displayHandle = mDisplay.lock();
+    if(!displayHandle)
+    {
+        return false;
+    }
+    if(!mDesiredRenderer)
+    {
+        LOG(DEBUG) << "Turning off the display";
+        displayHandle->setDisplayState(DisplayState::NOT_VISIBLE);
+    }
+
     // Since we're changing states, shut down the current renderer
     if (mCurrentRenderer) {
         mCurrentRenderer->deactivate();
         mCurrentRenderer.reset();
     }
 
-    // Now set the display state based on whether we have a video feed to show
-    std::shared_ptr<IEvsDisplay> displayHandle = mDisplay.lock();
-    if (!displayHandle) {
-        return false;
-    }
-
-    if (!mDesiredRenderer) {
-        LOG(DEBUG) << "Turning off the display";
-        displayHandle->setDisplayState(DisplayState::NOT_VISIBLE);
-    } else {
+    if (mDesiredRenderer) {
         mCurrentRenderer = std::move(mDesiredRenderer);
 
         // Start the camera stream
@@ -399,7 +424,18 @@ bool EvsStateControl::configureEvsPipeline(State desiredState) {
             return false;
         }
 
-        // Activate the display
+        // Check the Display Info after Coming Out of Suspend Before Activating
+        if(mSuspend)
+        {
+            DisplayDesc displaydesc;
+            if(auto status = displayHandle->getDisplayInfo(&displaydesc);!status.isOk())
+            {
+                return false;
+            }
+            mSuspend = false;
+        }
+
+        //Activate the Display
         LOG(DEBUG) << "EvsActivateDisplayTiming start time: " << android::elapsedRealtime()
                    << " ms.";
         if (auto status = displayHandle->setDisplayState(DisplayState::VISIBLE_ON_NEXT_FRAME);
