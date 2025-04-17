@@ -309,20 +309,43 @@ ScopedAStatus EvsV4lCamera::getParameterList(std::vector<CameraParam>* _aidl_ret
 }
 
 ScopedAStatus EvsV4lCamera::getIntParameterRange(CameraParam id, ParameterRange* _aidl_return) {
-    if (!mCameraInfo) {
+    struct ParamRange range = {0};
+
+    if(getParameterRange(id,&range)!=0) {
         return ScopedAStatus::fromServiceSpecificError(static_cast<int>(EvsResult::NOT_SUPPORTED));
+    }
+
+    _aidl_return->min = range.min;
+    _aidl_return->max = range.max;
+    _aidl_return->step = range.step;
+
+    return ScopedAStatus::ok();
+}
+
+int EvsV4lCamera::getParameterRange(CameraParam id, ParamRange* range) {
+    if (!mCameraInfo) {
+        return -1;
     }
 
     auto it = mCameraInfo->controls.find(id);
     if (it == mCameraInfo->controls.end()) {
-        return ScopedAStatus::fromServiceSpecificError(static_cast<int>(EvsResult::NOT_SUPPORTED));
+        return -1;
     }
 
-    _aidl_return->min = std::get<0>(it->second);
-    _aidl_return->max = std::get<1>(it->second);
-    _aidl_return->step = std::get<2>(it->second);
+    range->min = std::get<0>(it->second);
+    range->max = std::get<1>(it->second);
+    range->step = std::get<2>(it->second);
+    return 0;
+}
 
-    return ScopedAStatus::ok();
+bool EvsV4lCamera::validParamValue(CameraParam id,int32_t value) {
+    struct ParamRange range = {0};
+    if(getParameterRange(id,&range) == 0){
+        if(value < range.min || value > range.max) return false;
+        if((value - range.min) % range.step != 0) return false;
+        return true;
+    }
+    return false;
 }
 
 ScopedAStatus EvsV4lCamera::setIntParameter(CameraParam id, int32_t value,
@@ -331,13 +354,22 @@ ScopedAStatus EvsV4lCamera::setIntParameter(CameraParam id, int32_t value,
     if (!convertToV4l2CID(id, v4l2cid)) {
         return ScopedAStatus::fromServiceSpecificError(static_cast<int>(EvsResult::INVALID_ARG));
     } else {
-        v4l2_control control = {v4l2cid, value};
-        if (mVideo.setParameter(control) < 0 || mVideo.getParameter(control) < 0) {
-            return ScopedAStatus::fromServiceSpecificError(
-                    static_cast<int>(EvsResult::UNDERLYING_SERVICE_ERROR));
-        }
+        if(validParamValue(id,value)) {
+            v4l2_control control = {v4l2cid, value};
+            if (mVideo.setParameter(control) < 0 || mVideo.getParameter(control) < 0) {
+                return ScopedAStatus::fromServiceSpecificError(
+                        static_cast<int>(EvsResult::UNDERLYING_SERVICE_ERROR));
+            }
 
-        (*effectiveValue)[0] = control.value;
+            if(effectiveValue) {
+                if(effectiveValue->empty()) {
+                    effectiveValue->resize(1);
+                }
+                (*effectiveValue)[0] = control.value;
+            }
+        } else {
+            ALOGE("Param Value is not within the range");
+        }
     }
 
     return ScopedAStatus::ok();

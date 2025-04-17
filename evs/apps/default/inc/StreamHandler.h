@@ -17,6 +17,7 @@
 #ifndef EVS_VTS_STREAMHANDLER_H
 #define EVS_VTS_STREAMHANDLER_H
 
+#include "ConfigManager.h"
 #include <aidl/android/hardware/automotive/evs/BnEvsCameraStream.h>
 #include <aidl/android/hardware/automotive/evs/BufferDesc.h>
 #include <aidl/android/hardware/automotive/evs/DisplayState.h>
@@ -45,7 +46,7 @@ public:
             int32_t height = 360);
     void shutdown();
 
-    bool startStream();
+    bool startStream(ConfigManager::CameraParam* param);
     void asyncStopStream();
     void blockingStopStream();
 

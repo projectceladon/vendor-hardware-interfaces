@@ -21,6 +21,7 @@
 #include <aidl/android/hardware/automotive/evs/BufferDesc.h>
 #include <aidl/android/hardware/automotive/evs/EvsEventDesc.h>
 #include <aidl/android/hardware/automotive/evs/EvsEventType.h>
+#include <aidl/android/hardware/automotive/evs/CameraParam.h>
 #include <aidlcommonsupport/NativeHandle.h>
 #include <android-base/logging.h>
 #include <cutils/native_handle.h>
@@ -35,6 +36,7 @@ using aidl::android::hardware::automotive::evs::BufferDesc;
 using aidl::android::hardware::automotive::evs::EvsEventDesc;
 using aidl::android::hardware::automotive::evs::EvsEventType;
 using aidl::android::hardware::automotive::evs::IEvsCamera;
+using aidl::android::hardware::automotive::evs::CameraParam;
 
 }  // namespace
 
@@ -107,7 +109,7 @@ void StreamHandler::shutdown() {
     mOwnBuffers.resize(0);
 }
 
-bool StreamHandler::startStream() {
+bool StreamHandler::startStream(ConfigManager::CameraParam* param) {
     std::lock_guard lock(mLock);
     if (mRunning) {
         return true;
@@ -117,6 +119,62 @@ bool StreamHandler::startStream() {
     if (auto status = mCamera->startVideoStream(ref<StreamHandler>()); !status.isOk()) {
         LOG(ERROR) << "Failed to request a video stream.";
         return false;
+    }
+    mCamera->setPrimaryClient();
+    if(param) {
+        if(!(param->autotune))
+        {
+            std::vector<int32_t> effectiveVal;
+            effectiveVal.resize(1);
+            mCamera->setIntParameter(CameraParam::BRIGHTNESS,param->brightness,&effectiveVal);
+            if(effectiveVal[0] == param->brightness) {
+                LOG(ERROR) << "Brightness Control Set";
+            }
+            mCamera->setIntParameter(CameraParam::CONTRAST,param->contrast,&effectiveVal);
+            if(effectiveVal[0] == param->contrast) {
+                LOG(ERROR) << "Contrast Control Set";
+            }
+            mCamera->setIntParameter(CameraParam::AUTOGAIN,param->autogain,&effectiveVal);
+            if(effectiveVal[0] == param->autogain) {
+                LOG(ERROR) << "AutoGain Control Set";
+            }
+            mCamera->setIntParameter(CameraParam::GAIN,param->gain,&effectiveVal);
+            if(effectiveVal[0] == param->gain) {
+                LOG(ERROR) << "Gain Control Set";
+            }
+            mCamera->setIntParameter(CameraParam::AUTO_WHITE_BALANCE,param->awb,&effectiveVal);
+            if(effectiveVal[0] == param->awb) {
+                LOG(ERROR) << "Auto White Balance Control Set";
+            }
+            mCamera->setIntParameter(CameraParam::WHITE_BALANCE_TEMPERATURE,param->wbt,&effectiveVal);
+            if(effectiveVal[0] == param->wbt) {
+                LOG(ERROR) << "White Balance Temperature Control Set";
+            }
+            mCamera->setIntParameter(CameraParam::SHARPNESS,param->sharpness,&effectiveVal);
+            if(effectiveVal[0] == param->sharpness) {
+                LOG(ERROR) << "Sharpness Control Set";
+            }
+            mCamera->setIntParameter(CameraParam::AUTO_EXPOSURE,param->ae,&effectiveVal);
+            if(effectiveVal[0] == param->ae) {
+                LOG(ERROR) << "Auto Exposure Control Set";
+            }
+            mCamera->setIntParameter(CameraParam::ABSOLUTE_EXPOSURE,param->exposureval,&effectiveVal);
+            if(effectiveVal[0] == param->exposureval) {
+                LOG(ERROR) << "Absolute Exposure Control Set";
+            }
+            mCamera->setIntParameter(CameraParam::ABSOLUTE_FOCUS,param->focusval,&effectiveVal);
+            if(effectiveVal[0] == param->focusval) {
+                LOG(ERROR) << "Absolute Focus Control Set";
+            }
+            mCamera->setIntParameter(CameraParam::AUTO_FOCUS,param->af,&effectiveVal);
+            if(effectiveVal[0] == param->af) {
+                LOG(ERROR) << "Auto Focus Control Set";
+            }
+            mCamera->setIntParameter(CameraParam::ABSOLUTE_ZOOM,param->abszoom,&effectiveVal);
+            if(effectiveVal[0] == param->abszoom) {
+                LOG(ERROR) << "Absolute Zoom Control Set";
+            }
+        }
     }
 
     // Mark ourselves as running

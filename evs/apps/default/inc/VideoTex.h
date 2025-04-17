@@ -29,6 +29,7 @@
 #include <aidl/android/hardware/automotive/evs/IEvsCamera.h>
 #include <aidl/android/hardware/automotive/evs/IEvsEnumerator.h>
 #include <aidl/android/hardware/automotive/evs/Stream.h>
+#include "ConfigManager.h"
 
 #include <system/graphics-base.h>
 
@@ -37,7 +38,7 @@ class VideoTex final : public TexWrapper {
             const std::shared_ptr<aidl::android::hardware::automotive::evs::IEvsEnumerator>& pEnum,
             const char* evsCameraId,
             std::unique_ptr<aidl::android::hardware::automotive::evs::Stream> streamCfg,
-            EGLDisplay glDisplay, bool useExternalMemory, android_pixel_format_t format);
+            EGLDisplay glDisplay, bool useExternalMemory, android_pixel_format_t format, ConfigManager::CameraParam* param);
 
 public:
     VideoTex() = delete;
@@ -66,6 +67,6 @@ VideoTex* createVideoTexture(
         const char* deviceName,
         std::unique_ptr<aidl::android::hardware::automotive::evs::Stream> streamCfg,
         EGLDisplay glDisplay, bool useExternalMemory = false,
-        android_pixel_format_t format = HAL_PIXEL_FORMAT_RGBA_8888);
+        android_pixel_format_t format = HAL_PIXEL_FORMAT_RGBA_8888, ConfigManager::CameraParam* param = nullptr);
 
 #endif  // VIDEOTEX_H

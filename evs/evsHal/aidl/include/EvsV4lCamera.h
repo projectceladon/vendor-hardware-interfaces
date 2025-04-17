@@ -91,6 +91,11 @@ public:
     EvsV4lCamera(const char* deviceName, std::unique_ptr<ConfigManager::CameraInfo>& camInfo);
 
 private:
+    struct ParamRange {
+        int32_t min;
+        int32_t max;
+        int32_t step;
+    };
     // These three functions are expected to be called while mAccessLock is held
     bool setAvailableFrames_Locked(unsigned bufferCount);
     unsigned increaseAvailableFrames_Locked(unsigned numToAdd);
@@ -98,6 +103,8 @@ private:
 
     void forwardFrame(imageBuffer* tgt, void* data);
     inline bool convertToV4l2CID(aidlevs::CameraParam id, uint32_t& v4l2cid);
+    int getParameterRange(CameraParam id, ParamRange* range);
+    bool validParamValue(CameraParam id,int32_t value);
 
     // The callback used to deliver each frame
     std::shared_ptr<aidlevs::IEvsCameraStream> mStream;

@@ -45,6 +45,18 @@ static bool readChildNodeAsFloat(const char* groupName, const Json::Value& paren
     return true;
 }
 
+static void readChildNodeAsInt(const Json::Value& parentNode, const char* childName, int32_t* value) {
+    assert(value);
+
+    Json::Value childNode = parentNode[childName];
+    if(!childNode.isNumeric()) {
+        printf("Invalid filed %s",childName);
+        return;
+    }
+
+    *value = childNode.asInt();
+}
+
 bool ConfigManager::initialize(const char* configFileName) {
     bool complete = true;
 
@@ -150,6 +162,23 @@ bool ConfigManager::initialize(const char* configFileName) {
             bool hflip = node.get("hflip", false).asBool();
             bool vflip = node.get("vflip", false).asBool();
 
+            Json::Value cameraParam = node["cameraparam"];
+
+            CameraParam camParam = {0};
+            readChildNodeAsInt(cameraParam,"autotune",&(camParam.autotune));
+            readChildNodeAsInt(cameraParam,"brigthness",&(camParam.brightness));
+            readChildNodeAsInt(cameraParam,"contrast",&(camParam.contrast));
+            readChildNodeAsInt(cameraParam,"autogain",&(camParam.autogain));
+            readChildNodeAsInt(cameraParam,"gain",&(camParam.gain));
+            readChildNodeAsInt(cameraParam,"awb",&(camParam.awb));
+            readChildNodeAsInt(cameraParam,"wbt",&(camParam.wbt));
+            readChildNodeAsInt(cameraParam,"sharpness",&(camParam.sharpness));
+            readChildNodeAsInt(cameraParam,"ae",&(camParam.ae));
+            readChildNodeAsInt(cameraParam,"exposureval",&(camParam.exposureval));
+            readChildNodeAsInt(cameraParam,"af",&(camParam.af));
+            readChildNodeAsInt(cameraParam,"focusval",&(camParam.focusval));
+            readChildNodeAsInt(cameraParam,"abszoom",&(camParam.abszoom));
+
             // Wrap the direction angles to be in the 180deg to -180deg range
             // Rotate 180 in yaw if necessary to flip the pitch into the +/-90degree range
             pitch = normalizeToPlusMinus180degrees(pitch);
@@ -198,6 +227,7 @@ bool ConfigManager::initialize(const char* configFileName) {
             info.function = function;
             info.width = width;
             info.height = height;
+            info.camparam = camParam;
 
             mCameras.emplace_back(info);
         }
