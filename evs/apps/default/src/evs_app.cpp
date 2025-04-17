@@ -254,6 +254,9 @@ int main(int argc, char** argv) {
             if (!subscribeToVHal(subscriptionClient.get(), VehicleProperty::TURN_SIGNAL_STATE)) {
                 LOG(WARNING) << "Didn't get turn signal notifications, so we'll ignore those.";
             }
+            if(!subscribeToVHal(subscriptionClient.get(), VehicleProperty::AP_POWER_STATE_REPORT)) {
+                LOG(ERROR) << "Subscription for AP Power State Report Failed";
+            }
         }
     } else {
         LOG(WARNING) << "Test mode selected, so not talking to Vehicle HAL";
