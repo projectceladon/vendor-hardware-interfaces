@@ -29,6 +29,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <cutils/properties.h>
 
 #include <cassert>
 #include <iomanip>
@@ -37,6 +38,24 @@
 //        during the resource setup phase.  Of particular note is the potential to leak
 //        the file descriptor.  This must be fixed before using this code for anything but
 //        experimentation.
+
+const std::string kPropEvsDQBufFPS = "vendor.camera.fps.evs.dqbuf";
+
+int getPropValue(const std::string& prop)
+{
+    int value = 0;
+    char prop_value[256] = {0};
+
+    if(property_get(prop.c_str(),prop_value,NULL) > 0)
+    {
+        value = std::stoi(prop_value);
+    }
+
+    return value;
+}
+
+int VideoCapture::mNumCamerasStreaming = 0;
+
 bool VideoCapture::open(const char* deviceName, const int32_t width, const int32_t height) {
     LOG(INFO) <<"App requested resolution "<<width <<" "<<height;
 
@@ -292,6 +311,8 @@ bool VideoCapture::startStream(std::function<void(VideoCapture*, imageBuffer*, v
     // Fire up a thread to receive and dispatch the video frames
     mCaptureThread = std::thread([this]() { collectFrames(); });
 
+    mNumCamerasStreaming++;
+
     LOG(DEBUG) << "Stream started.";
     return true;
 }
@@ -317,6 +338,8 @@ void VideoCapture::stopStream() {
         if (ioctl(mDeviceFd, VIDIOC_STREAMOFF, &type) < 0) {
             PLOG(ERROR) << "VIDIOC_STREAMOFF failed";
         }
+
+        mNumCamerasStreaming--;
 
         LOG(DEBUG) << "Capture thread stopped.";
     }
@@ -367,6 +390,16 @@ void VideoCapture::collectFrames() {
     FD_ZERO(&fds);
     FD_SET(mDeviceFd, &fds);
 
+    static int frameCount = 0;
+    static auto startTime = std::chrono::high_resolution_clock::now();
+
+    static bool FPSDebugEnabled = false;
+
+    if(getPropValue(kPropEvsDQBufFPS) > 0)
+    {
+        FPSDebugEnabled = true;
+    }
+
     while (mRunMode == RUN) {
         struct v4l2_plane mplanes[VIDEO_PLANES];
          struct v4l2_buffer buf = {
@@ -394,6 +427,23 @@ void VideoCapture::collectFrames() {
         if (ioctl(mDeviceFd, VIDIOC_DQBUF, &buf) < 0) {
             PLOG(ERROR) << "VIDIOC_DQBUF failed";
             break;
+        }
+
+        if(FPSDebugEnabled)
+        {
+            frameCount++;
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-startTime).count();
+            if(duration >= 1000)
+            {
+                double FPS = (frameCount * 1000) / duration;
+                FPS = FPS / mNumCamerasStreaming;
+
+                LOG(INFO) << "EVS_HAL Frame Collection FPS: "<<FPS << "For " << mNumCamerasStreaming << "Cameras Streaming";
+
+                frameCount = 0;
+                startTime = currentTime;
+            }
         }
 
         mFrames.insert(buf.index);
