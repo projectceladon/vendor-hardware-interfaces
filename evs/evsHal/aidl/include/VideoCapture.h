@@ -75,6 +75,8 @@ private:
     int mNumBuffers = 0;
     uint32_t mBufferSize;
 
+    static int mNumCamerasStreaming;
+
     std::unique_ptr<v4l2_buffer[]> mBufferInfos = nullptr;
     std::unique_ptr<void*[]> mPixelBuffers = nullptr;
 
