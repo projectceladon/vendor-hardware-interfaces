@@ -26,8 +26,8 @@
   },
   "cameras" : [
     {
-      "cameraId" : "/dev/video0",
-      "function" : "reverse,park",
+      "cameraId" : "/dev/virtvideo0",
+      "function" : "reverse",
       "x" : 0.0,
       "y" : 20.0,
       "z" : 48,
@@ -42,8 +42,8 @@
       "height": 720
     },
     {
-      "cameraId" : "/dev/video1",
-      "function" : "front,park",
+      "cameraId" : "/dev/virtvideo1",
+      "function" : "front, reverse",
       "x" : 0.0,
       "y" : 100.0,
       "z" : 48,
@@ -58,8 +58,8 @@
       "height": 1080
     },
     {
-      "cameraId" : "/dev/video2",
-      "function" : "right,park",
+      "cameraId" : "/dev/virtvideo2",
+      "function" : "right,reverse",
       "x" : -25.0,
       "y" : 60.0,
       "z" : 88,
@@ -74,8 +74,8 @@
       "height": 1080
     },
     {
-      "cameraId" : "/dev/video3",
-      "function" : "left, park",
+      "cameraId" : "/dev/virtvideo3",
+      "function" : "left, reverse",
       "x" : 20.0,
       "y" : 60.0,
       "z" : 88,

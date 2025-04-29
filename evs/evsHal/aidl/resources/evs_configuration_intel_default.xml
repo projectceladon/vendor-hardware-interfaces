@@ -31,7 +31,7 @@
     <!-- camera device information -->
     <camera>
         <!-- camera device starts -->
-        <device id='/dev/video0' position='rear'>
+        <device id='/dev/virtvideo0' position='rear'>
             <caps>
                 <!-- list of supported controls -->
                 <supported_controls>
@@ -86,7 +86,7 @@
                 />
             </characteristics>
         </device>
-        <device id='/dev/video1' position='front'>
+        <device id='/dev/virtvideo1' position='front'>
             <caps>
                 <!-- list of supported controls -->
                 <supported_controls>
@@ -143,7 +143,7 @@
         </device>
 
         <!-- vivid emulated video devices -->
-        <device id='/dev/video2' position='right'>
+        <device id='/dev/virtvideo2' position='right'>
             <caps>
                 <!-- list of supported controls -->
                 <supported_controls>
@@ -160,7 +160,7 @@
             <!-- list of parameters -->
             <characteristics/>
         </device>
-        <device id='/dev/video3' position='left'>
+        <device id='/dev/virtvideo3' position='left'>
             <caps>
                 <!-- list of supported controls -->
                 <supported_controls>
