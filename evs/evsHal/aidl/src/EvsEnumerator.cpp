@@ -52,7 +52,9 @@ using std::chrono_literals::operator""s;
 // Constants
 constexpr std::chrono::seconds kEnumerationTimeout = 10s;
 constexpr std::string_view kDevicePath = "/dev/";
-constexpr std::string_view kPrefix = "video";
+constexpr std::string_view kPrefix = "virtvideo";
+constexpr std::string_view kVideoPrefix = "video";
+constexpr std::string_view kUVCPrefix = "uvcvideo";
 constexpr size_t kEventBufferSize = 512;
 constexpr uint64_t kInvalidDisplayId = std::numeric_limits<uint64_t>::max();
 const std::set<uid_t> kAllowedUids = {AID_AUTOMOTIVE_EVS, AID_SYSTEM, AID_ROOT};
@@ -111,7 +113,9 @@ void EvsEnumerator::EvsHotplugThread(std::shared_ptr<EvsEnumerator> service,
             struct inotify_event* event =
                     reinterpret_cast<struct inotify_event*>(&eventBuf[offset]);
             offset += sizeof(struct inotify_event) + event->len;
-            if (event->wd != watchFd || strncmp(kPrefix.data(), event->name, kPrefix.size())) {
+            if (event->wd != watchFd || !(strncmp(kPrefix.data(), event->name, kPrefix.size()) == 0
+                                        || strncmp(kVideoPrefix.data(),event->name,kVideoPrefix.size()) == 0
+                                        || strncmp(kUVCPrefix.data(),event->name,kUVCPrefix.size()) == 0)) {
                 continue;
             }
 
@@ -221,9 +225,9 @@ void EvsEnumerator::enumerateCameras() {
     //           information.  Platform implementers should consider hard coding this list of
     //           known good devices to speed up the startup time of their EVS implementation.
     //           For example, this code might be replaced with nothing more than:
-    //                   sCameraList.insert("/dev/video0");
-    //                   sCameraList.insert("/dev/video1");
-    LOG(INFO) << __FUNCTION__ << ": Starting dev/video* enumeration";
+    //                   sCameraList.insert("/dev/virtvideo0");
+    //                   sCameraList.insert("/dev/virtvideo1");
+    LOG(INFO) << __FUNCTION__ << ": Starting dev/virtvideo* enumeration";
     auto videoCount = 0;
     auto captureCount = 0;
     DIR* dir = opendir("/dev");
@@ -232,8 +236,10 @@ void EvsEnumerator::enumerateCameras() {
     }
     struct dirent* entry;
     while ((entry = readdir(dir)) != nullptr) {
-        // We're only looking for entries starting with 'video'
-        if (strncmp(entry->d_name, "video", 5) == 0) {
+        // We're only looking for entries starting with 'virtvideo'
+        if ((strncmp(entry->d_name, "virtvideo", 9) == 0)
+            || (strncmp(entry->d_name, "video", 5) == 0)
+            || (strncmp(entry->d_name, "uvcvideo", 8) == 0)) {
             std::string deviceName("/dev/");
             deviceName += entry->d_name;
             ++videoCount;
