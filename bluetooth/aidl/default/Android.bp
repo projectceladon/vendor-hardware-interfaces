@@ -16,6 +16,7 @@ cc_defaults {
         "libhidlbase",
         "liblog",
         "libutils",
+        "libusb"
     ],
     static_libs: [
         "android.hardware.bluetooth.async",
@@ -31,6 +32,7 @@ cc_library_static {
     srcs: [
         "BluetoothHci.cpp",
         "net_bluetooth_mgmt.cpp",
+        "net_bluetooth_mgmt_ext.cpp",
     ],
 }
 
@@ -51,7 +53,7 @@ cc_binary {
         "libhidlbase",
         "libutils",
         "liblog",
-	"libusb",
+        "libusb",
     ],
     static_libs: [
         "libbluetoothhcihalimplvbt",
@@ -71,6 +73,7 @@ cc_fuzz {
         "android.hardware.bluetooth-V1-ndk",
         "libbluetoothhcihalimplvbt",
         "liblog",
+        "libusb",
     ],
     fuzz_config: {
         componentid: 27441,
