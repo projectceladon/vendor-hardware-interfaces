@@ -436,7 +436,7 @@ void VideoCapture::collectFrames() {
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime-startTime).count();
             if(duration >= 1000)
             {
-                double FPS = (frameCount * 1000) / duration;
+                double FPS = static_cast<double>(frameCount * 1000) / duration;
                 FPS = FPS / mNumCamerasStreaming;
 
                 LOG(INFO) << "EVS_HAL Frame Collection FPS: "<<FPS << "For " << mNumCamerasStreaming << "Cameras Streaming";
