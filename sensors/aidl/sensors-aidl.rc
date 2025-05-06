@@ -1,4 +1,4 @@
-service vendor.sensors-default /vendor/bin/hw/android.hardware.sensors@aidl-service.intel
+service vendor.sensors-default /apex/com.android.hardware.sensors.intel/bin/hw/android.hardware.sensors@aidl-service.intel
     interface aidl android.hardware.sensors.ISensors/default 
     class hal
     user system
