@@ -24,6 +24,14 @@
 #include <sys/socket.h>
 #include <sys/sysinfo.h>
 #include <linux/vm_sockets.h>
+#include <regex>
+#include <dirent.h>
+#include <cstring>
+#include <cstdio>
+#include <fstream>
+#include <map>
+#include <system_error>
+#include <charconv>
 
 #define SYSFS_TEMPERATURE_CPU       "/sys/class/thermal/thermal_zone0/temp"
 #define CPU_NUM_MAX                 Thermal::getNumCpu()
@@ -215,6 +223,253 @@ static int get_soc_pkg_temperature(float* temp)
     return 0;
 }
 
+// --- Constants ---
+const float TEMP_UNIT_DIVISOR = 1000.0f;
+
+// --- Structures: CoreTemperature and AllCpuTemperatures ---
+struct CoreTemperature {
+    int id = -1;
+    std::string label;
+    float temperature = NAN;
+    CoreTemperature(int i, const std::string& l, float t) : id(i), label(l), temperature(t) {}
+};
+
+struct AllCpuTemperatures {
+    float package_temperature = NAN;
+    std::string package_label;
+    std::vector<CoreTemperature> core_temps;
+    int detected_core_count = 0;
+    float max_core_temp = NAN;
+    float max_overall_temp = NAN;
+    void update_max_temps() {
+        max_core_temp = NAN;
+        max_overall_temp = NAN;
+        if (!isnan(package_temperature)) {
+            max_overall_temp = package_temperature;
+        }
+        for (const auto& core_temp : core_temps) {
+            if (!isnan(core_temp.temperature)) {
+                if (isnan(max_core_temp) || core_temp.temperature > max_core_temp) {
+                    max_core_temp = core_temp.temperature;
+                }
+                if (isnan(max_overall_temp) || core_temp.temperature > max_overall_temp) {
+                    max_overall_temp = core_temp.temperature;
+                }
+            }
+        }
+        detected_core_count = core_temps.size();
+    }
+};
+
+// --- Cached Sensor Information ---
+struct DiscoveredSensor {
+    int id = -1;
+    std::string label;
+    std::string input_file_path;
+    bool is_package_sensor = false;
+};
+
+static std::vector<DiscoveredSensor> S_CACHED_SENSORS;
+static std::vector<std::string> S_CACHED_HWMON_DIRS;
+static bool S_CACHE_INITIALIZED = false;
+
+// --- Function: find_hwmon_dirs_for_device  ---
+std::vector<std::string> find_hwmon_dirs_for_device(const std::string& device_name, bool enable_logging) {
+    std::vector<std::string> hwmon_paths;
+    const std::string hwmon_base_dir = "/sys/class/hwmon/";
+    DIR* dir = opendir(hwmon_base_dir.c_str());
+    if (!dir) {
+        if (enable_logging) ALOGE("Failed to open directory: %s - %s", hwmon_base_dir.c_str(), strerror(errno));
+        return hwmon_paths;
+    }
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+        if (entry->d_type == DT_DIR || entry->d_type == DT_LNK) {
+            std::string dirname = entry->d_name;
+            if (dirname == "." || dirname == "..") {
+                continue;
+            }
+            std::string name_file_path = hwmon_base_dir + dirname + "/name";
+            std::ifstream name_file(name_file_path);
+            if (name_file.is_open()) {
+                std::string current_device_name;
+                if (std::getline(name_file, current_device_name) && current_device_name == device_name) {
+                    hwmon_paths.push_back(hwmon_base_dir + dirname);
+                }
+                name_file.close();
+            }
+        }
+    }
+    closedir(dir);
+    return hwmon_paths;
+}
+
+// --- Function: clear_cache ---
+void clear_cache() {
+    S_CACHED_SENSORS.clear();
+    S_CACHED_HWMON_DIRS.clear();
+    S_CACHE_INITIALIZED = false;
+    ALOGW("Temperature sensor cache has been cleared.");
+}
+
+
+AllCpuTemperatures get_cpu_temperatures(bool enable_logging = true) {
+    AllCpuTemperatures all_temps;
+    bool read_from_cache_successful = true;
+
+    if (S_CACHE_INITIALIZED) {
+        for (const auto& sensor_info : S_CACHED_SENSORS) {
+            std::ifstream file(sensor_info.input_file_path);
+            float temp_raw;
+            if (file.is_open() && (file >> temp_raw)) {
+                float temp_celsius = temp_raw / TEMP_UNIT_DIVISOR;
+                if (sensor_info.is_package_sensor) {
+                    if (isnan(all_temps.package_temperature) || temp_celsius > all_temps.package_temperature) {
+                         all_temps.package_temperature = temp_celsius;
+                         all_temps.package_label = sensor_info.label;
+                    }
+                } else {
+                    all_temps.core_temps.emplace_back(sensor_info.id, sensor_info.label, temp_celsius);
+                }
+            } else {
+                if (enable_logging) ALOGE("Failed to read from cached path: %s. Invalidating cache.", sensor_info.input_file_path.c_str());
+                clear_cache();
+                read_from_cache_successful = false;
+                break;
+            }
+            file.close();
+        }
+        if (read_from_cache_successful) {
+             std::sort(all_temps.core_temps.begin(), all_temps.core_temps.end(),
+              [](const CoreTemperature& a, const CoreTemperature& b) {
+                  return a.id < b.id;
+              });
+            all_temps.update_max_temps();
+            return all_temps;
+        }
+    }
+
+    if (enable_logging && !read_from_cache_successful) {
+        ALOGI("Cache miss or invalidation. Performing full sensor discovery...");
+    } else if (enable_logging && !S_CACHE_INITIALIZED) { // Ensure this condition is met for initial discovery log
+        ALOGI("Cache not initialized. Performing initial sensor discovery...");
+    }
+
+    S_CACHED_SENSORS.clear(); // Clear before repopulating
+    S_CACHED_HWMON_DIRS.clear();
+
+    S_CACHED_HWMON_DIRS = find_hwmon_dirs_for_device("coretemp", enable_logging);
+    if (S_CACHED_HWMON_DIRS.empty()){
+        if (enable_logging) ALOGE("No coretemp hwmon directories found via discovery or fallback.");
+        S_CACHE_INITIALIZED = false;
+        return all_temps;
+   }
+
+    std::regex temp_file_regex("^temp([0-9]+)_(input|label)$");
+    std::regex core_label_regex("^Core\\s+([0-9]+)$");
+    std::regex package_label_regex("^(Package id [0-9]+|Physical id [0-9]+)$");
+
+    std::map<int, std::string> discovered_labels;
+    std::map<int, std::string> discovered_input_paths;
+
+    for (const std::string& hwmon_dir : S_CACHED_HWMON_DIRS) {
+        DIR* dir = opendir(hwmon_dir.c_str());
+        if (!dir) {
+            if (enable_logging) ALOGE("Failed to open hwmon directory: %s - %s", hwmon_dir.c_str(), strerror(errno));
+            continue;
+        }
+        struct dirent* entry;
+        while ((entry = readdir(dir)) != nullptr) {
+            if (entry->d_type == DT_REG) {
+                std::string filename = entry->d_name;
+                std::smatch match;
+                if (std::regex_match(filename, match, temp_file_regex)) {
+                    std::string index_str = match[1].str();
+                    int parsed_index;
+                    auto fc_res_idx = std::from_chars(index_str.data(), index_str.data() + index_str.size(), parsed_index);
+
+                    if (fc_res_idx.ec == std::errc() && fc_res_idx.ptr == index_str.data() + index_str.size()) {
+                        // Successfully parsed index
+                        std::string type = match[2].str();
+                        std::string full_path = hwmon_dir + "/" + filename;
+                        if (type == "label") {
+                            std::ifstream file(full_path);
+                            if (file.is_open()) {
+                                std::string label_content;
+                                if (std::getline(file, label_content)) {
+                                    discovered_labels[parsed_index] = label_content;
+                                }
+                                file.close();
+                            }
+                        } else if (type == "input") {
+                            discovered_input_paths[parsed_index] = full_path;
+                        }
+                    } else {
+                        if (enable_logging) ALOGW("Failed to parse index from filename fragment '%s' in %s. Error: %d",
+                                                  index_str.c_str(), filename.c_str(), static_cast<int>(fc_res_idx.ec));
+                    }
+                }
+            }
+        }
+        closedir(dir);
+    }
+
+    for (auto const& [index_val, label_content] : discovered_labels) { // index_val is used here
+        if (discovered_input_paths.count(index_val)) {
+            std::string input_path = discovered_input_paths[index_val];
+            std::ifstream temp_file(input_path);
+            float temp_raw;
+            if (temp_file.is_open() && (temp_file >> temp_raw)) {
+                float temp_celsius = temp_raw / TEMP_UNIT_DIVISOR;
+                DiscoveredSensor current_sensor_info;
+                current_sensor_info.label = label_content;
+                current_sensor_info.input_file_path = input_path;
+                std::smatch core_match;
+                if (std::regex_match(label_content, core_match, core_label_regex)) {
+                    std::string core_id_str = core_match[1].str();
+                    int parsed_core_id;
+                    auto fc_res_core_id = std::from_chars(core_id_str.data(), core_id_str.data() + core_id_str.size(), parsed_core_id);
+
+                    if (fc_res_core_id.ec == std::errc() && fc_res_core_id.ptr == core_id_str.data() + core_id_str.size()) {
+                        current_sensor_info.id = parsed_core_id;
+                        current_sensor_info.is_package_sensor = false;
+                        all_temps.core_temps.emplace_back(current_sensor_info.id, label_content, temp_celsius);
+                        S_CACHED_SENSORS.push_back(current_sensor_info);
+                    } else {
+                         if (enable_logging) ALOGW("Failed to parse core ID from label '%s' (value '%s'). Error: %d",
+                                                  label_content.c_str(), core_id_str.c_str(), static_cast<int>(fc_res_core_id.ec));
+                    }
+                } else if (std::regex_match(label_content, package_label_regex)) {
+                    current_sensor_info.is_package_sensor = true;
+                    if (isnan(all_temps.package_temperature) || temp_celsius > all_temps.package_temperature) {
+                        all_temps.package_temperature = temp_celsius;
+                        all_temps.package_label = label_content;
+                    }
+                    S_CACHED_SENSORS.push_back(current_sensor_info);
+                }
+            } else {
+                 if (enable_logging) ALOGW("Failed to read temp from discovered path: %s", input_path.c_str());
+            }
+            temp_file.close();
+        }
+    }
+
+    if (!S_CACHED_SENSORS.empty()) {
+        S_CACHE_INITIALIZED = true;
+        if (enable_logging) ALOGI("Sensor cache populated with %zu entries.", S_CACHED_SENSORS.size());
+    } else {
+        S_CACHE_INITIALIZED = false;
+        if (enable_logging) ALOGW("No sensors were successfully discovered to populate cache.");
+    }
+
+    std::sort(all_temps.core_temps.begin(), all_temps.core_temps.end(),
+              [](const CoreTemperature& a, const CoreTemperature& b) {
+                  return a.id < b.id;
+              });
+    all_temps.update_max_temps();
+    return all_temps;
+}
+
 Thermal::Thermal() {
     mCheckThread = std::thread(&Thermal::CheckThermalServerity, this);
     mCheckThread.detach();
@@ -224,24 +479,41 @@ void Thermal::CheckThermalServerity() {
     float temp = NAN;
     int res = -1;
     int vsock_fd;
+    bool is_pkg_temp_present = false;
+    bool first_iteration_logging_enabled = true;
+
     kTempThreshold.hotThrottlingThresholds = {{NAN, NAN, NAN, NAN, NAN, 99, 108}};
     ALOGI("Start check temp thread.\n");
 
     if (!connect_vsock(&vsock_fd))
         is_vsock_present = true;
+    if (access(SYSFS_TEMPERATURE_CPU, F_OK) == 0) {
+        is_pkg_temp_present = true;
+        ALOGI("SOC package temperature is available\n");
+    }
 
     while (1) {
         if (is_vsock_present) {
             res = 0;
             recv_vsock(&vsock_fd);
-        }else {
-            res = get_soc_pkg_temperature(&temp);
+        } else {
+            if (is_pkg_temp_present) {
+                res = get_soc_pkg_temperature(&temp);
+            } else {
+                // If SOC package temperature is not available, get max core temperature
+                AllCpuTemperatures temps = get_cpu_temperatures(first_iteration_logging_enabled);
+                if (first_iteration_logging_enabled) {
+                    first_iteration_logging_enabled = false; // Disable detailed logging after first successful run
+                }
+                temp = temps.max_core_temp;
+                res = 0;
+            }
             kTemp_2_0.value = temp;
         }
         if (res) {
             ALOGE("Can not get temperature of type %d", kTemp_1_0.type);
         } else {
-           ALOGI("Size of kTempThreshold.hotThrottlingThresholds=%f, kTemp_2_0.value=%f",kTempThreshold.hotThrottlingThresholds[5], kTemp_2_0.value);
+            ALOGI("Size of kTempThreshold.hotThrottlingThresholds=%f, kTemp_2_0.value=%f",kTempThreshold.hotThrottlingThresholds[5], kTemp_2_0.value);
             for (size_t i = kTempThreshold.hotThrottlingThresholds.size() - 1; i > 0; i--) {
                 if (kTemp_2_0.value >= kTempThreshold.hotThrottlingThresholds[i]) {
                     kTemp_2_0.type = TemperatureType::CPU;
