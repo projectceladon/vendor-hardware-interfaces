@@ -246,6 +246,10 @@ void EvsStateControl::updateLoop() {
     if (mCurrentRenderer) {
         // Deactive the renderer
         mCurrentRenderer->deactivate();
+        mCurrentRenderer->resetDisplay();
+        mCurrentRenderer.reset();
+    } else if(mDesiredRenderer) {
+        mDesiredRenderer->resetDisplay();
     }
 
     // If `ICarTelemetry` service was not ready before, we need to try sending data again.
