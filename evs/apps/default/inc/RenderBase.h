@@ -39,6 +39,7 @@ public:
     virtual bool drawFrame(
             const aidl::android::hardware::automotive::evs::BufferDesc& tgtBuffer) = 0;
 
+    static void resetDisplay();
 protected:
     static bool prepareGL();
 

@@ -227,3 +227,9 @@ void RenderBase::detachRenderTarget() {
         sKHRimage = EGL_NO_IMAGE_KHR;
     }
 }
+
+void RenderBase::resetDisplay() {
+
+    sDisplay = EGL_NO_DISPLAY;
+
+}

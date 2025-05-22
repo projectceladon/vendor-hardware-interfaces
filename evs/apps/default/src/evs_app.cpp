@@ -51,7 +51,13 @@ const char CONFIG_OVERRIDE_PATH[] = "/system/etc/automotive/evs/config_override.
 
 std::shared_ptr<IEvsEnumerator> pEvsService;
 std::shared_ptr<IEvsDisplay> pDisplay;
+std::shared_ptr<IVhalClient> pVnet;
 EvsStateControl* pStateController;
+ndk::SpAIBinder evsManagerBinder;
+std::shared_ptr<EvsVehicleListener> pEvsListener;
+const char* evsServiceName;
+int displayId;
+ConfigManager config;
 
 // Helper to subscribe to Vhal notifications
 bool subscribeToVHal(ISubscriptionClient* client, VehicleProperty propertyId) {
@@ -73,6 +79,84 @@ bool subscribeToVHal(ISubscriptionClient* client, VehicleProperty propertyId) {
     }
 
     return true;
+}
+
+void onEVSEnumeratorDied(void*) {
+    LOG(ERROR) << "Enumerator Service Died";
+
+    EvsStateControl::Command cmd = {
+            .operation = EvsStateControl::Op::EXIT,
+            .arg1 = 0,
+            .arg2 = 0,
+    };
+
+    pEvsListener->terminate();
+    pStateController->terminateUpdateLoop();
+
+    pEvsService = nullptr;
+    evsManagerBinder = nullptr;
+    pDisplay = nullptr;
+
+    bool retry = true;
+
+    while (retry) {
+        // Get the EVS manager service
+        LOG(INFO) << "Retrying Acquiring EVS Enumerator";
+        std::string serviceName =
+                std::string(IEvsEnumerator::descriptor) + "/" + std::string(evsServiceName);
+        if (!AServiceManager_isDeclared(serviceName.c_str())) {
+            LOG(ERROR) << serviceName << " is not declared. Exiting.";
+            continue;
+        }
+
+        evsManagerBinder = ndk::SpAIBinder(AServiceManager_checkService(serviceName.c_str()));
+        pEvsService = IEvsEnumerator::fromBinder(evsManagerBinder);
+
+        if (!pEvsService) {
+            LOG(ERROR) << "Failed to get " << serviceName;
+            continue;
+        } else {
+            retry = false;
+        }
+
+        static AIBinder_DeathRecipient* deathRecipient = AIBinder_DeathRecipient_new(onEVSEnumeratorDied);
+
+        if(AIBinder_linkToDeath(evsManagerBinder.get(), deathRecipient,nullptr) != STATUS_OK) {
+            LOG(ERROR) << "Failed to link Death Recipient";
+        }
+
+        // Request exclusive access to the EVS display
+        LOG(INFO) << "ReAcquiring EVS Display";
+
+        // We'll use an available display device.
+        if (displayId < 0) {
+            PLOG(ERROR) << "EVS Display is unknown.  Exiting.";
+            return;
+        }
+
+        if (auto status = pEvsService->openDisplay(displayId, &pDisplay); !status.isOk()) {
+            LOG(ERROR) << "EVS Display unavailable.  Exiting.";
+            return;
+        }
+
+        delete pStateController;
+        pStateController = nullptr;
+
+        LOG(INFO) << "Constructing state controller";
+        pStateController = new EvsStateControl(pVnet, pEvsService, pDisplay, config);
+        if (!pStateController->startUpdateLoop()) {
+            LOG(ERROR) << "Initial configuration failed.  Exiting.";
+            return;
+        }
+
+        // Run forever, reacting to events as necessary
+        LOG(INFO) << "Entering running state";
+        pEvsListener->run(pStateController);
+
+        // In normal operation, we expect to run forever, but in some error conditions we'll quit.
+        // One known example is if another process preempts our registration for our service name.
+        LOG(ERROR) << "EVS Listener stopped.  Exiting.";
+    }
 }
 
 bool convertStringToFormat(const char* str, android_pixel_format_t* output) {
@@ -101,11 +185,11 @@ int main(int argc, char** argv) {
     // Set up default behavior, then check for command line options
     bool useVehicleHal = true;
     bool printHelp = false;
-    const char* evsServiceName = "default";
-    int displayId = -1;
+    evsServiceName = "default";
     bool useExternalMemory = false;
     android_pixel_format_t extMemoryFormat = HAL_PIXEL_FORMAT_RGBA_8888;
     int32_t mockGearSignal = static_cast<int32_t>(VehicleGear::GEAR_REVERSE);
+    displayId = -1;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--test") == 0) {
             useVehicleHal = false;
@@ -177,7 +261,6 @@ int main(int argc, char** argv) {
     }
 
     // Load our configuration information
-    ConfigManager config;
     if (!config.initialize(CONFIG_OVERRIDE_PATH)) {
         if (!config.initialize(CONFIG_DEFAULT_PATH)) {
             LOG(ERROR) << "Missing or improper configuration for the EVS application.  Exiting.";
@@ -196,7 +279,7 @@ int main(int argc, char** argv) {
     ABinderProcess_startThreadPool();
 
     // Construct our async helper object
-    std::shared_ptr<EvsVehicleListener> pEvsListener = std::make_shared<EvsVehicleListener>();
+    pEvsListener = std::make_shared<EvsVehicleListener>();
 
     // Get the EVS manager service
     LOG(INFO) << "Acquiring EVS Enumerator";
@@ -207,11 +290,18 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    pEvsService = IEvsEnumerator::fromBinder(
-            ndk::SpAIBinder(AServiceManager_checkService(serviceName.c_str())));
+    evsManagerBinder = ndk::SpAIBinder(AServiceManager_checkService(serviceName.c_str()));
+    pEvsService = IEvsEnumerator::fromBinder(evsManagerBinder);
+
     if (!pEvsService) {
         LOG(ERROR) << "Failed to get " << serviceName << ". Exiting.";
         return EXIT_FAILURE;
+    }
+
+    static AIBinder_DeathRecipient* deathRecipient = AIBinder_DeathRecipient_new(onEVSEnumeratorDied);
+
+    if(AIBinder_linkToDeath(evsManagerBinder.get(), deathRecipient,nullptr) != STATUS_OK) {
+        LOG(ERROR) << "Failed to link Death Recipient";
     }
 
     // Request exclusive access to the EVS display
@@ -236,7 +326,7 @@ int main(int argc, char** argv) {
     config.setMockGearSignal(mockGearSignal);
 
     // Connect to the Vehicle HAL so we can monitor state
-    std::shared_ptr<IVhalClient> pVnet;
+    pVnet = nullptr;
     if (useVehicleHal) {
         LOG(INFO) << "Connecting to Vehicle HAL";
         pVnet = IVhalClient::create();

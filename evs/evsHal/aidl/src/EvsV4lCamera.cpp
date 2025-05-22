@@ -93,8 +93,10 @@ void EvsV4lCamera::shutdown() {
             if (rec.inUse) {
                 LOG(WARNING) << "Releasing buffer despite remote ownership";
             }
-            alloc.free(rec.handle);
-            rec.handle = nullptr;
+            if (rec.handle != nullptr) {
+                alloc.free(rec.handle);
+                rec.handle = nullptr;
+            }
         }
         mBuffers.clear();
     }

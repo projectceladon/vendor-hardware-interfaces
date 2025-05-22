@@ -57,7 +57,8 @@ public:
     }
 
     void run(EvsStateControl* pStateController) {
-        while (true) {
+        mRunning = true;
+        while (mRunning) {
             // Wait until we have an event to which to react
             // (wake up and validate our current state "just in case" every so often)
             waitForEvents(5000);
@@ -72,9 +73,14 @@ public:
         }
     }
 
+    void terminate() {
+        mRunning = false;
+    }
+
 private:
     std::mutex mLock;
     std::condition_variable mEventCond;
+    bool mRunning;
 };
 
 #endif  // CAR_EVS_APP_VEHICLELISTENER_H
