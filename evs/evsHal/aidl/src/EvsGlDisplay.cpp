@@ -219,6 +219,7 @@ void EvsGlDisplay::renderFrames() {
             std::lock_guard lock(mLock);
             mBufferBusy = false;
         }
+        mBufferReadyToUse.notify_all();
         mBufferDone.notify_all();
     }
 
